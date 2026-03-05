@@ -1,0 +1,23 @@
+config.toml
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+!**/.env.j2
+!**/.env.*.j2
+data/*
+!data/.gitkeep
+temp/*
+!temp/.gitkeep
+
+temp
+**/target
+
+# Web Dev
+/webui
+**/dist
+**/.vite
+**/.vitest
+**/node_modules
+**/tsconfig.tsbuildinfo
+**/*.local.*

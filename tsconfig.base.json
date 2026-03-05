@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+		"composite": true,
+		"module": "preserve",
+		"moduleResolution": "bundler",
+		"importHelpers": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"strict": true,
+		"noImplicitOverride": true,
+		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true,
+		"resolveJsonModule": true,
+		"noPropertyAccessFromIndexSignature": false
+	}
+}

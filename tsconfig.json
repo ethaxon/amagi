@@ -1,0 +1,16 @@
+{
+	"references": [
+		{
+			"path": "./apps/dashboard-web/tsconfig.json"
+		},
+		{
+			"path": "./apps/extension-web/tsconfig.json"
+		},
+		{
+			"path": "./packages/sync-client/tsconfig.json"
+		},
+		{
+			"path": "./tsconfig.scripts.json"
+		}
+	]
+}

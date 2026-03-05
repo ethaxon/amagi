@@ -1,0 +1,37 @@
+{
+    "name": "@ethaxon/amagi",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "description": "Amagi is a self-hosted bookmark control plane.",
+    "keywords": [
+        "bookmark",
+        "control plane",
+        "self-hosted",
+        "sync",
+        "policy-driven",
+        "device/browser-specific projection",
+        "private vault",
+        "manual sync first"
+    ],
+    "workspaces": [
+        "apps/dashboard-web",
+        "apps/extension-web",
+        "packages/sync-client"
+    ],
+    "license": "MPL-2.0",
+    "author": "Zhou Yeheng <root@aitiotekt.com>",
+    "packageManager": "pnpm@10.29.3",
+    "scripts": {
+        "prepare": "prek install",
+        "lint": "biome check",
+        "lint-fix": "biome check --write"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.4.2",
+        "@j178/prek": "^0.3.2",
+        "@types/node": "^25.2.3",
+        "shx": "^0.4.0",
+        "typescript": "^5.9.3"
+    }
+}

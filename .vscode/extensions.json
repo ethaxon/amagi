@@ -1,0 +1,11 @@
+{
+	"recommendations": [
+		"rust-lang.rust-analyzer",
+		"skellock.just",
+		"ms-azuretools.vscode-docker",
+		"ms-azuretools.vscode-containers",
+		"samuelcolvin.jinjahtml",
+		"hverlin.mise-vscode",
+		"biomejs.biome"
+	]
+}

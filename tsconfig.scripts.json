@@ -1,0 +1,17 @@
+{
+    "extends": "./tsconfig.base.json",
+    "compilerOptions": {
+        "emitDeclarationOnly": true,
+        "types": [
+            "node"
+        ],
+        "module": "NodeNext",
+        "moduleResolution": "nodenext"
+    },
+    "include": [
+        "**/vite*.ts",
+        "**/vite*.mts",
+        "**/scripts/**/*.ts",
+        "*/claims-script-check.mts"
+    ]
+}

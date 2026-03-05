@@ -1,0 +1,11 @@
+overrides:
+  vite: 8.0.0-beta.15
+
+packages:
+  - packages/sync-client
+  - apps/dashboard-web
+  - apps/extension-web
+
+onlyBuiltDependencies:
+  - "@j178/prek"
+  - esbuild

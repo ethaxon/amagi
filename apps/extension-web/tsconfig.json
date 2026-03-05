@@ -1,0 +1,28 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "skipLibCheck": true,
+        "outDir": "./dist",
+        "rootDir": "./src",
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ]
+        },
+        "target": "es2022",
+        "lib": [
+            "esnext",
+            "dom"
+        ],
+        "jsx": "react-jsx"
+    },
+    "include": [
+        "src/**/*.ts",
+        "src/**/*.tsx"
+    ],
+    "exclude": [
+        "**/node_modules",
+        "**/dist"
+    ]
+}

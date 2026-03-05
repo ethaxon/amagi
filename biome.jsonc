@@ -1,0 +1,71 @@
+{
+    "$schema": "https://biomejs.dev/schemas/2.4.6/schema.json",
+    "vcs": {
+        "enabled": true,
+        "clientKind": "git",
+        "useIgnoreFile": true
+    },
+    "formatter": {
+        "enabled": true,
+        "indentStyle": "tab"
+    },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "recommended": true
+        }
+    },
+    "javascript": {
+        "formatter": {
+            "quoteStyle": "double"
+        }
+    },
+    "assist": {
+        "enabled": true,
+        "actions": {
+            "source": {
+                "organizeImports": "on"
+            }
+        }
+    },
+    "css": {
+        "parser": {
+            "tailwindDirectives": true
+        }
+    },
+    "files": {
+        "ignoreUnknown": false,
+        "includes": [
+            "**",
+            "!dist",
+            "!**/dist",
+            "!webui",
+            "!target",
+            "!**/target",
+            "!node_modules",
+            "!**/node_modules",
+            "!pnpm-lock.yaml",
+            "!**/pnpm-lock.yaml",
+            "!pnpm-workspace.yaml",
+            "!**/pnpm-workspace.yaml",
+            "!pnpm-workspace.yaml",
+            "!.vite",
+            "!.vitest",
+            "!assets",
+            "!**/*.local.*"
+        ]
+    },
+    "overrides": [
+        {
+            "includes": [
+                ".vscode/**/*.json"
+            ],
+            "json": {
+                "parser": {
+                    "allowComments": true,
+                    "allowTrailingCommas": true
+                }
+            }
+        }
+    ]
+}
