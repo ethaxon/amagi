@@ -10,6 +10,13 @@ export default defineConfig({
 		conditions: ["monorepo-tsc"],
 		alias: [
 			{
+				find: "@ethaxon/amagi-auth-client",
+				replacement: path.resolve(
+					projectRoot,
+					"packages/amagi-auth-client/src/index.ts",
+				),
+			},
+			{
 				find: "@ethaxon/amagi-sync-client",
 				replacement: path.resolve(
 					projectRoot,
@@ -17,10 +24,10 @@ export default defineConfig({
 				),
 			},
 			{
-				find: "@ethaxon/amagi-browser-adapter-chromium",
+				find: "@ethaxon/amagi-webext",
 				replacement: path.resolve(
 					projectRoot,
-					"packages/amagi-browser-adapter-chromium/src/index.ts",
+					"packages/amagi-webext/src/index.ts",
 				),
 			},
 			{

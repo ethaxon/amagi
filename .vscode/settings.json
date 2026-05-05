@@ -40,6 +40,9 @@
 	},
 	"ruff.format.preview": true,
 	"terminal.integrated.macOptionIsMeta": true,
+	"files.associations": {
+		"*.kdl": "zellij-kdl"
+	},
 	"sqltools.connections": [
 		{
 			"ssh": "Disabled",

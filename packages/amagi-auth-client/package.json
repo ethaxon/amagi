@@ -1,0 +1,22 @@
+{
+	"name": "@ethaxon/amagi-auth-client",
+	"version": "0.0.1",
+	"type": "module",
+	"exports": {
+		".": {
+			"monorepo-tsc": "./src/index.ts",
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.mts"
+		}
+	},
+	"dependencies": {
+		"@securitydept/client": "0.3.0-beta.2",
+		"@securitydept/token-set-context-client": "0.3.0-beta.2",
+		"oauth4webapi": "^3.8.3"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"typecheck": "tsc -b --force",
+		"test": "vitest run --root ../../ --config vitest.config.ts packages/amagi-auth-client/src/__tests__"
+	}
+}

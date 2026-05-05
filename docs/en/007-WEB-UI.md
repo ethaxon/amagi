@@ -4,16 +4,20 @@
 
 This document defines the information architecture, key pages, frontend data flow, and recommended directory structure for the amagi Dashboard Web UI.
 
-The technology stack is fixed as:
+The current Iter11 Dashboard Web baseline is implemented with:
 
 - Vite
 - React
-- TanStack Router
-- TanStack Query
-- TanStack Table
-- TanStack Virtual
-- shadcn/ui
-- Tailwind CSS
+- a lightweight typed API client
+- local CSS and React state
+
+TanStack Router / Query / Table / Virtual or other UI infrastructure should be introduced later when route count, async caching, and table complexity actually justify them; this round does not add them just to satisfy a checklist.
+
+Current development-time calling convention:
+
+- Dashboard Web continues to use an absolute API base URL from the dev connection panel
+- the default local pairing is `http://localhost:4174` or `http://127.0.0.1:4174` -> API server `http://127.0.0.1:7800`
+- the API server provides a restricted CORS baseline that allows those two Dashboard dev origins to send requests with `Authorization` and `X-Amagi-Oidc-Source`
 
 For architecture see `001-ARCHITECTURE.md`.
 For API see `004-API.md`.
@@ -107,6 +111,14 @@ Displays:
 - preview history
 - last sync status
 
+The current Iter11 baseline only implements the first sync profile management screen, including:
+
+- auth panel: API base URL, OIDC source, SecurityDept backend-oidc login / clear local token-set state, authentication status display
+- advanced dev fallback: collapsed `devBearerToken` textarea used only to bypass frontend SDK issues during debugging
+- profile list: name, enabled, mode, default direction, conflict policy
+- selected profile detail: edit profile, list targets, add/delete target, list rules, add/edit/delete rule
+- error panel: display API error code / message
+
 ### 4.5 Vault Page
 
 Displays:
@@ -142,7 +154,7 @@ Displays:
 
 ### 5.1 Server State
 
-All delegated to TanStack Query:
+The current Iter11 baseline still uses lightweight React state for this single-screen workflow; once Dashboard expands into multiple pages and shared caches, TanStack Query is the recommended next step. Future Query-owned state should include:
 
 - current user
 - libraries
@@ -155,7 +167,7 @@ All delegated to TanStack Query:
 
 ### 5.2 Route State
 
-Delegated to TanStack Router + URL:
+The current Iter11 baseline is a single sync-management screen and does not yet use a router. In a later multi-page stage, TanStack Router + URL should own:
 
 - selected library
 - selected folder
@@ -335,6 +347,20 @@ At minimum support:
 
 ## 10. Recommended Frontend Directory Structure
 
+The current Iter11 baseline may stay lightweight, for example:
+
+```
+src/
+  App.tsx
+  api.ts
+  constants.ts
+  state.ts
+  main.tsx
+  styles.css
+```
+
+As Dashboard evolves into a real multi-page app, it can gradually move toward:
+
 ```
 src/
   app/
@@ -375,7 +401,7 @@ src/
 
 ## 11. API Client Recommendations
 
-Recommend establishing `lib/api/`, organized by resource file:
+The current Iter11 baseline already requires pulling requests out of component JSX. In the later multi-resource stage, establish `lib/api/`, organized by resource file:
 
 - `me.ts`
 - `libraries.ts`
@@ -430,7 +456,7 @@ At minimum support:
 1. Libraries main interface
 2. Search
 3. Devices
-4. Sync Profiles
+4. Sync Profiles: Iter11 now has the first management-screen baseline
 5. Preview/Apply Viewer
 6. Vault Unlock
 7. Conflicts

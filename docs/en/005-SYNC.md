@@ -75,7 +75,13 @@ Defines how the target should sync:
 - mode
 - direction
 - conflict policy
+- target selectors
 - include/exclude/readonly rules
+
+Current Iter11 baseline adds these constraints:
+
+- The Dashboard management API guarantees each user has at least one enabled manual profile
+- `selectedProfile` / `availableProfiles` returned by sync session still come from cloud-side profile configuration, not browser-local state
 
 ---
 
@@ -89,12 +95,12 @@ Only executes preview/apply when the user explicitly acts.
 ### 4.2 Scheduled
 
 Executes scan and sync at fixed intervals.
-Suitable for desktop, but optional in the first stage.
+Suitable for desktop, but currently remains only a domain placeholder; the Iter11 UI/API does not allow creating this mode.
 
 ### 4.3 Auto
 
 Near real-time automatic sync.
-Not recommended for default enablement in the first stage.
+Not recommended for default enablement in the first stage; the Iter11 UI/API does not allow creating this mode.
 
 ---
 
@@ -134,6 +140,13 @@ Rule matching dimensions include:
   - folder path
   - tag
 
+In the current Iter11 dashboard management API, JSON field names use camelCase such as `matcherType` / `matcherValue`, but matcher canonical values still use:
+
+- `library_kind`
+- `folder_id`
+- `folder_path`
+- `tag`
+
 ### 6.2 Rule Actions
 
 - `include`
@@ -154,6 +167,11 @@ If a profile matches but no more granular rules apply:
 
 - Normal library defaults to include
 - Vault library defaults to exclude
+
+The current Iter11 `ensure_default_profile()` also guarantees the default profile has at least these two rules:
+
+- include `library_kind:normal`
+- exclude `library_kind:vault`
 
 ---
 
@@ -211,6 +229,8 @@ The client must maintain:
 
 - server node id <-> client external id
 
+For server-delivered create/restore operations, the local apply create op must also carry `serverNodeId`. After the adapter creates the real browser node, it must return the new `clientExternalId` so the orchestrator can merge that mapping before acking the cursor.
+
 Otherwise, move/update/delete cannot be performed safely.
 
 ---
@@ -239,8 +259,8 @@ Otherwise, move/update/delete cannot be performed safely.
 6. User confirms apply
 7. Server writes bookmark mutation, revision, and mapping in a single transaction
 8. Returns final local apply ops and new clock
-9. Client applies local operations in stages per apply plan
-10. Client acks cursor
+9. Client applies local operations in stages per apply plan, merging both server apply `createdMappings` and local apply create `createdMappings`
+10. Client reloads the tree, saves merged mappings, then acks cursor
 
 ---
 
@@ -279,6 +299,7 @@ Current Iter8 client baseline:
 - If server-side apply succeeds but local adapter apply fails, saves pending recovery state, does not ack cursor.
 - If the local cursor is behind and there are no local mutations this round, still converts server ops from preview/apply into a local apply plan; the adapter must successfully apply before acking cursor.
 - If the local cursor is behind and there are local mutations this round, the server can return `stale_base_clock` conflict; the client should save the pending preview, not apply, not ack, wait to pull/apply new server ops first, then retry preview.
+- For server-created local nodes, local apply create must return `createdMappings`, and `runManualSync()` merges them before reloading the tree and acking the cursor.
 - The local apply plan currently executes in four phases: create -> update -> move -> delete.
 - When the client parses revision payload, field sources prioritize `payload.node.*`: `payload.node.nodeType`, `payload.node.parentId`, `payload.node.title`, `payload.node.url`, `payload.node.sortKey`; for `node.move`, the target parent first takes the top-level `payload.parentId`, then falls back to `payload.node.parentId`.
 

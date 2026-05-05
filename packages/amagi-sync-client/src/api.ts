@@ -38,7 +38,7 @@ export class AmagiSyncApiClient implements AmagiSyncApi {
 		this.baseUrl = normalizeBaseUrl(options.baseUrl);
 		this.bearerToken = options.bearerToken.trim();
 		this.oidcSource = options.oidcSource?.trim() || null;
-		this.fetchImpl = options.fetchImpl ?? fetch;
+		this.fetchImpl = options.fetchImpl ?? getDefaultFetch();
 		if (!this.bearerToken) {
 			throw new SyncClientError(
 				"bearer token is required for sync API requests",
@@ -148,6 +148,16 @@ function normalizeBaseUrl(baseUrl: string): string {
 		throw new SyncClientError("baseUrl is required for sync API client");
 	}
 	return trimmed.endsWith("/") ? trimmed : `${trimmed}/`;
+}
+
+function getDefaultFetch(): typeof fetch {
+	if (typeof globalThis.fetch !== "function") {
+		throw new SyncClientError(
+			"fetch is not available in the current environment",
+		);
+	}
+
+	return globalThis.fetch.bind(globalThis);
 }
 
 function tryParseJson(value: string): unknown | null {

@@ -28,13 +28,13 @@ layout {
     }
     tab name="ExtensionWeb" {
         pane command="pnpm" {
-            args "dev"
+            args "dev:chrome"
             cwd "apps/extension-web"
         }
     }
     tab name="ApiServer" {
         pane command="watchexec" {
-            args "--watch" "apps/api-server" "--watch" "packages" "--exts" "rs,toml" "--" "cargo" "run" "--manifest-path" "apps/api-server/Cargo.toml"
+	            args "--watch" "apps/api-server" "--watch" "packages" "--watch" "dev" "--exts" "rs,toml" "--" "cargo" "run" "--manifest-path" "apps/api-server/Cargo.toml" "--" "--config" "dev/amagi.config.local.toml"
         }
     }
     tab name="Deps" {

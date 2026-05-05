@@ -18,15 +18,28 @@ use crate::{
     },
 };
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ConfigLoadOptions {
+    pub config_file: Option<PathBuf>,
+}
+
 impl ApiServerConfig {
     pub fn load() -> ConfigResult<Self> {
-        Self::from_figment(Self::figment()?)
+        Self::load_with_options(ConfigLoadOptions::default())
+    }
+
+    pub fn load_with_options(options: ConfigLoadOptions) -> ConfigResult<Self> {
+        Self::from_figment(Self::figment_with_options(&options)?)
     }
 
     pub fn figment() -> ConfigResult<Figment> {
+        Self::figment_with_options(&ConfigLoadOptions::default())
+    }
+
+    pub fn figment_with_options(options: &ConfigLoadOptions) -> ConfigResult<Figment> {
         let mut figment = Figment::new();
 
-        for path in config_file_candidates() {
+        for path in config_file_candidates(options) {
             if path.exists() {
                 figment = figment.merge(Toml::file(path));
             }
@@ -87,18 +100,26 @@ where
         })
 }
 
-fn config_file_candidates() -> Vec<PathBuf> {
+fn config_file_candidates(options: &ConfigLoadOptions) -> Vec<PathBuf> {
     let mut paths = Vec::new();
 
-    if let Ok(path) = env::var("AMAGI_CONFIG_FILE") {
-        paths.push(PathBuf::from(path));
+    for candidate in ["amagi.config.toml", "amagi.toml"] {
+        push_unique_path(&mut paths, PathBuf::from(candidate));
     }
 
-    for candidate in ["amagi.config.toml", "amagi.toml"] {
-        if !paths.iter().any(|path| path == Path::new(candidate)) {
-            paths.push(PathBuf::from(candidate));
-        }
+    if let Ok(path) = env::var("AMAGI_CONFIG_FILE") {
+        push_unique_path(&mut paths, PathBuf::from(path));
+    }
+
+    if let Some(path) = options.config_file.as_ref() {
+        push_unique_path(&mut paths, path.clone());
     }
 
     paths
+}
+
+fn push_unique_path(paths: &mut Vec<PathBuf>, candidate: PathBuf) {
+    if !paths.iter().any(|path| path == Path::new(&candidate)) {
+        paths.push(candidate);
+    }
 }

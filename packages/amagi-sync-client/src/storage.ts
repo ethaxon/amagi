@@ -4,6 +4,15 @@ import type {
 	SyncConflictView,
 	SyncPreviewResponse,
 } from "./types";
+import { ManualSyncStatus } from "./types";
+
+export const LastSyncStatusState = {
+	Idle: "idle",
+	...ManualSyncStatus,
+} as const;
+
+export type LastSyncStatusState =
+	(typeof LastSyncStatusState)[keyof typeof LastSyncStatusState];
 
 export interface PendingPreviewState {
 	libraryId: string;
@@ -22,12 +31,7 @@ export interface PendingRecoveryState {
 }
 
 export interface LastSyncStatus {
-	state:
-		| "idle"
-		| "synced"
-		| "needs-user-resolution"
-		| "awaiting-confirmation"
-		| "recovery-required";
+	state: LastSyncStatusState;
 	libraryId: string | null;
 	updatedAt: string;
 	message: string;

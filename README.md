@@ -1,6 +1,19 @@
-# amagi
+<img src="./assets/icons/cel/icon-1024.png" width="400" height="400" alt="amagi" align="right" />
+<div align="center">
 
-amagi is a self-hosted bookmark control plane.
+# Amagi
+
+>
+> — **𝓣𝓱𝓮 𝓔𝔁𝓬𝓮𝓹𝓽𝓲𝓸𝓷𝓪𝓵 𝓑𝓸𝓸𝓴𝓶𝓪𝓻𝓴-𝓜𝓪𝓷𝓪𝓰𝓲𝓷𝓰 𝓜𝓪𝓲𝓭 𝓐𝓷𝓭𝓻𝓸𝓲𝓭-**
+>
+
+<!-- placeholder for badgets -->
+
+</div>
+
+## 📖 Introduction
+
+Amagi is a self-hosted bookmark control plane.
 
 It is not just a bookmark syncer. The project is designed around cloud-owned bookmark state, rule-driven projection, manual preview/apply sync, browser-specific capabilities, and private vault libraries that do not leak into ordinary browser bookmark trees by default.
 
@@ -12,7 +25,7 @@ It is not just a bookmark syncer. The project is designed around cloud-owned boo
 
 [English](README.md) | [中文](README_zh.md)
 
-## Use amagi
+## ✨ About amagi
 
 There is no stable packaged release yet. Use this repository as a development workspace and architecture prototype.
 
@@ -50,12 +63,14 @@ Start local development dependencies, including PostgreSQL and the local Dex OID
 just dev-deps
 ```
 
+For the Iter12 happy path, `just dev` and `just dev-api` load `dev/amagi.config.local.toml` by default. The local Dex demo credentials are `amagi/amagi`, Dashboard auth returns through `http://127.0.0.1:4174/auth/token-set/oidc/source/default/callback`, and `devBearerToken` is now only an advanced fallback for SDK debugging.
+
 Common loops:
 
 ```bash
 just dev-api
 just dev-dashboard
-just dev-extension
+just dev-extension-chrome
 just lint
 just typecheck
 just test

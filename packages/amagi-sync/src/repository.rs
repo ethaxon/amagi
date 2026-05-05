@@ -1,11 +1,12 @@
 use amagi_db::entities::{
     browser_clients, devices, libraries, library_heads, node_client_mappings, node_revisions,
-    sync_conflicts, sync_cursors, sync_previews, sync_profile_rules, sync_profiles,
+    sync_conflicts, sync_cursors, sync_previews, sync_profile_rules, sync_profile_targets,
+    sync_profiles,
 };
 use chrono::{Duration, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, IntoActiveModel, QueryFilter,
-    QueryOrder, QuerySelect, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, IntoActiveModel,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, Set,
 };
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -16,14 +17,30 @@ use crate::{
     SyncError, SyncResult,
     model::{
         AcceptedLocalMutationView, BrowserClientRegistrationRequest, BrowserClientView,
+        CreateSyncProfileRequest, CreateSyncProfileRuleRequest, CreateSyncProfileTargetRequest,
         CursorSummaryView, DeviceRegistrationRequest, DeviceView, LocalMutationInput,
         NodeClientMappingView, PreviewSummaryView, ServerOpView, SyncConflictView, SyncLibraryView,
-        SyncProfileRuleView, SyncProfileView,
+        SyncProfileDetailView, SyncProfileRuleView, SyncProfileTargetView, SyncProfileView,
+        UpdateSyncProfileRequest, UpdateSyncProfileRuleRequest,
     },
 };
 
 const DEFAULT_DEVICE_TRUST_LEVEL: &str = "trusted";
 const DEFAULT_PROFILE_NAME: &str = "Default Manual Sync";
+
+pub(crate) struct InsertPreviewParams<'a> {
+    pub owner_user_id: Uuid,
+    pub browser_client_id: Uuid,
+    pub library_id: Uuid,
+    pub base_clock: i64,
+    pub to_clock: i64,
+    pub status: &'a str,
+    pub request_hash: String,
+    pub summary: &'a PreviewSummaryView,
+    pub server_ops: &'a [ServerOpView],
+    pub accepted_local_mutations: &'a [AcceptedLocalMutationView],
+    pub conflicts: &'a [SyncConflictView],
+}
 
 pub struct SyncRepository;
 
@@ -171,6 +188,21 @@ impl SyncRepository {
         Ok(client)
     }
 
+    pub async fn find_device_for_owner(
+        txn: &DatabaseTransaction,
+        owner_user_id: Uuid,
+        device_id: Uuid,
+    ) -> SyncResult<devices::Model> {
+        devices::Entity::find_by_id(device_id)
+            .filter(devices::Column::UserId.eq(owner_user_id))
+            .one(txn)
+            .await
+            .map_err(|_| SyncError::DatabaseQuery {
+                action: "load sync target device",
+            })?
+            .ok_or(SyncError::DeviceNotFound)
+    }
+
     pub async fn find_library_for_owner(
         txn: &DatabaseTransaction,
         owner_user_id: Uuid,
@@ -221,6 +253,7 @@ impl SyncRepository {
         if let Some(profile) = sync_profiles::Entity::find()
             .filter(sync_profiles::Column::UserId.eq(owner_user_id))
             .filter(sync_profiles::Column::Mode.eq("manual"))
+            .filter(sync_profiles::Column::Enabled.eq(true))
             .order_by_asc(sync_profiles::Column::CreatedAt)
             .one(txn)
             .await
@@ -228,6 +261,7 @@ impl SyncRepository {
                 action: "load default sync profile",
             })?
         {
+            Self::ensure_default_profile_rules(txn, profile.id).await?;
             return Ok(profile);
         }
 
@@ -247,13 +281,33 @@ impl SyncRepository {
             action: "insert default sync profile",
         })?;
 
-        for (rule_order, action, matcher_value) in [
-            (1, "include", "library_kind:normal"),
-            (2, "exclude", "library_kind:vault"),
-        ] {
+        Self::ensure_default_profile_rules(txn, profile.id).await?;
+
+        Ok(profile)
+    }
+
+    async fn ensure_default_profile_rules(
+        txn: &DatabaseTransaction,
+        profile_id: Uuid,
+    ) -> SyncResult<()> {
+        if sync_profile_rules::Entity::find()
+            .filter(sync_profile_rules::Column::ProfileId.eq(profile_id))
+            .one(txn)
+            .await
+            .map_err(|_| SyncError::DatabaseQuery {
+                action: "load default sync profile rules",
+            })?
+            .is_some()
+        {
+            return Ok(());
+        }
+
+        for (rule_order, action, matcher_value) in
+            [(1, "include", "normal"), (2, "exclude", "vault")]
+        {
             sync_profile_rules::ActiveModel {
                 id: Set(Uuid::now_v7()),
-                profile_id: Set(profile.id),
+                profile_id: Set(profile_id),
                 rule_order: Set(rule_order),
                 action: Set(action.to_owned()),
                 matcher_type: Set("library_kind".to_owned()),
@@ -268,7 +322,7 @@ impl SyncRepository {
             })?;
         }
 
-        Ok(profile)
+        Ok(())
     }
 
     pub async fn list_profiles_for_owner(
@@ -282,6 +336,21 @@ impl SyncRepository {
             .await
             .map_err(|_| SyncError::DatabaseQuery {
                 action: "list sync profiles",
+            })
+    }
+
+    pub async fn list_enabled_profiles_for_owner(
+        txn: &DatabaseTransaction,
+        owner_user_id: Uuid,
+    ) -> SyncResult<Vec<sync_profiles::Model>> {
+        sync_profiles::Entity::find()
+            .filter(sync_profiles::Column::UserId.eq(owner_user_id))
+            .filter(sync_profiles::Column::Enabled.eq(true))
+            .order_by_asc(sync_profiles::Column::CreatedAt)
+            .all(txn)
+            .await
+            .map_err(|_| SyncError::DatabaseQuery {
+                action: "list enabled sync profiles",
             })
     }
 
@@ -300,6 +369,18 @@ impl SyncRepository {
             .ok_or(SyncError::ProfileNotFound)
     }
 
+    pub async fn find_enabled_profile_for_owner(
+        txn: &DatabaseTransaction,
+        owner_user_id: Uuid,
+        profile_id: Uuid,
+    ) -> SyncResult<sync_profiles::Model> {
+        let profile = Self::find_profile_for_owner(txn, owner_user_id, profile_id).await?;
+        if !profile.enabled {
+            return Err(SyncError::ProfileDisabled);
+        }
+        Ok(profile)
+    }
+
     pub async fn list_profile_rules(
         txn: &DatabaseTransaction,
         profile_id: Uuid,
@@ -312,6 +393,229 @@ impl SyncRepository {
             .map_err(|_| SyncError::DatabaseQuery {
                 action: "list sync profile rules",
             })
+    }
+
+    pub async fn list_profile_targets(
+        txn: &DatabaseTransaction,
+        profile_id: Uuid,
+    ) -> SyncResult<Vec<sync_profile_targets::Model>> {
+        sync_profile_targets::Entity::find()
+            .filter(sync_profile_targets::Column::ProfileId.eq(profile_id))
+            .order_by_asc(sync_profile_targets::Column::CreatedAt)
+            .all(txn)
+            .await
+            .map_err(|_| SyncError::DatabaseQuery {
+                action: "list sync profile targets",
+            })
+    }
+
+    pub async fn count_enabled_manual_profiles(
+        txn: &DatabaseTransaction,
+        owner_user_id: Uuid,
+    ) -> SyncResult<u64> {
+        sync_profiles::Entity::find()
+            .filter(sync_profiles::Column::UserId.eq(owner_user_id))
+            .filter(sync_profiles::Column::Mode.eq("manual"))
+            .filter(sync_profiles::Column::Enabled.eq(true))
+            .count(txn)
+            .await
+            .map_err(|_| SyncError::DatabaseQuery {
+                action: "count enabled manual sync profiles",
+            })
+    }
+
+    pub async fn create_profile(
+        txn: &DatabaseTransaction,
+        owner_user_id: Uuid,
+        request: &CreateSyncProfileRequest,
+    ) -> SyncResult<sync_profiles::Model> {
+        sync_profiles::ActiveModel {
+            id: Set(Uuid::now_v7()),
+            user_id: Set(owner_user_id),
+            name: Set(request.name.trim().to_owned()),
+            mode: Set(request.mode.trim().to_owned()),
+            default_direction: Set(request.default_direction.trim().to_owned()),
+            conflict_policy: Set(request.conflict_policy.trim().to_owned()),
+            enabled: Set(true),
+            ..Default::default()
+        }
+        .insert(txn)
+        .await
+        .map_err(|_| SyncError::DatabaseQuery {
+            action: "insert sync profile",
+        })
+    }
+
+    pub async fn update_profile(
+        txn: &DatabaseTransaction,
+        profile: sync_profiles::Model,
+        request: &UpdateSyncProfileRequest,
+    ) -> SyncResult<sync_profiles::Model> {
+        let mut active = profile.into_active_model();
+        if let Some(name) = &request.name {
+            active.name = Set(name.trim().to_owned());
+        }
+        if let Some(enabled) = request.enabled {
+            active.enabled = Set(enabled);
+        }
+        if let Some(default_direction) = &request.default_direction {
+            active.default_direction = Set(default_direction.trim().to_owned());
+        }
+        if let Some(conflict_policy) = &request.conflict_policy {
+            active.conflict_policy = Set(conflict_policy.trim().to_owned());
+        }
+        active
+            .update(txn)
+            .await
+            .map_err(|_| SyncError::DatabaseQuery {
+                action: "update sync profile",
+            })
+    }
+
+    pub async fn create_profile_target(
+        txn: &DatabaseTransaction,
+        profile_id: Uuid,
+        request: &CreateSyncProfileTargetRequest,
+    ) -> SyncResult<sync_profile_targets::Model> {
+        sync_profile_targets::ActiveModel {
+            id: Set(Uuid::now_v7()),
+            profile_id: Set(profile_id),
+            platform: Set(request.platform.clone()),
+            device_type: Set(request.device_type.clone()),
+            device_id: Set(request
+                .device_id
+                .as_deref()
+                .map(Uuid::parse_str)
+                .transpose()
+                .map_err(|_| SyncError::InvalidRequest {
+                    code: "device_id_invalid",
+                    message: "deviceId must be a UUID".to_owned(),
+                })?),
+            browser_family: Set(request.browser_family.clone()),
+            browser_client_id: Set(request
+                .browser_client_id
+                .as_deref()
+                .map(Uuid::parse_str)
+                .transpose()
+                .map_err(|_| SyncError::InvalidRequest {
+                    code: "browser_client_id_invalid",
+                    message: "browserClientId must be a UUID".to_owned(),
+                })?),
+            ..Default::default()
+        }
+        .insert(txn)
+        .await
+        .map_err(|_| SyncError::DatabaseQuery {
+            action: "insert sync profile target",
+        })
+    }
+
+    pub async fn find_profile_target(
+        txn: &DatabaseTransaction,
+        profile_id: Uuid,
+        target_id: Uuid,
+    ) -> SyncResult<sync_profile_targets::Model> {
+        sync_profile_targets::Entity::find_by_id(target_id)
+            .filter(sync_profile_targets::Column::ProfileId.eq(profile_id))
+            .one(txn)
+            .await
+            .map_err(|_| SyncError::DatabaseQuery {
+                action: "load sync profile target",
+            })?
+            .ok_or(SyncError::TargetNotFound)
+    }
+
+    pub async fn delete_profile_target(
+        txn: &DatabaseTransaction,
+        target: sync_profile_targets::Model,
+    ) -> SyncResult<()> {
+        target
+            .into_active_model()
+            .delete(txn)
+            .await
+            .map_err(|_| SyncError::DatabaseQuery {
+                action: "delete sync profile target",
+            })?;
+        Ok(())
+    }
+
+    pub async fn create_profile_rule(
+        txn: &DatabaseTransaction,
+        profile_id: Uuid,
+        request: &CreateSyncProfileRuleRequest,
+    ) -> SyncResult<sync_profile_rules::Model> {
+        sync_profile_rules::ActiveModel {
+            id: Set(Uuid::now_v7()),
+            profile_id: Set(profile_id),
+            rule_order: Set(request.rule_order),
+            action: Set(request.action.trim().to_owned()),
+            matcher_type: Set(request.matcher_type.trim().to_owned()),
+            matcher_value: Set(request.matcher_value.trim().to_owned()),
+            options_json: Set(request.options.clone()),
+            ..Default::default()
+        }
+        .insert(txn)
+        .await
+        .map_err(|_| SyncError::DatabaseQuery {
+            action: "insert sync profile rule",
+        })
+    }
+
+    pub async fn find_profile_rule(
+        txn: &DatabaseTransaction,
+        profile_id: Uuid,
+        rule_id: Uuid,
+    ) -> SyncResult<sync_profile_rules::Model> {
+        sync_profile_rules::Entity::find_by_id(rule_id)
+            .filter(sync_profile_rules::Column::ProfileId.eq(profile_id))
+            .one(txn)
+            .await
+            .map_err(|_| SyncError::DatabaseQuery {
+                action: "load sync profile rule",
+            })?
+            .ok_or(SyncError::RuleNotFound)
+    }
+
+    pub async fn update_profile_rule(
+        txn: &DatabaseTransaction,
+        rule: sync_profile_rules::Model,
+        request: &UpdateSyncProfileRuleRequest,
+    ) -> SyncResult<sync_profile_rules::Model> {
+        let mut active = rule.into_active_model();
+        if let Some(rule_order) = request.rule_order {
+            active.rule_order = Set(rule_order);
+        }
+        if let Some(action) = &request.action {
+            active.action = Set(action.trim().to_owned());
+        }
+        if let Some(matcher_type) = &request.matcher_type {
+            active.matcher_type = Set(matcher_type.trim().to_owned());
+        }
+        if let Some(matcher_value) = &request.matcher_value {
+            active.matcher_value = Set(matcher_value.trim().to_owned());
+        }
+        if let Some(options) = &request.options {
+            active.options_json = Set(options.clone());
+        }
+        active
+            .update(txn)
+            .await
+            .map_err(|_| SyncError::DatabaseQuery {
+                action: "update sync profile rule",
+            })
+    }
+
+    pub async fn delete_profile_rule(
+        txn: &DatabaseTransaction,
+        rule: sync_profile_rules::Model,
+    ) -> SyncResult<()> {
+        rule.into_active_model()
+            .delete(txn)
+            .await
+            .map_err(|_| SyncError::DatabaseQuery {
+                action: "delete sync profile rule",
+            })?;
+        Ok(())
     }
 
     pub async fn list_cursors_for_browser_client(
@@ -408,32 +712,28 @@ impl SyncRepository {
 
     pub async fn insert_preview(
         txn: &DatabaseTransaction,
-        owner_user_id: Uuid,
-        browser_client_id: Uuid,
-        library_id: Uuid,
-        base_clock: i64,
-        to_clock: i64,
-        status: &str,
-        request_hash: String,
-        summary: &PreviewSummaryView,
-        server_ops: &[ServerOpView],
-        accepted_local_mutations: &[AcceptedLocalMutationView],
-        conflicts: &[SyncConflictView],
+        params: InsertPreviewParams<'_>,
     ) -> SyncResult<sync_previews::Model> {
         sync_previews::ActiveModel {
             id: Set(Uuid::now_v7()),
-            user_id: Set(owner_user_id),
-            browser_client_id: Set(browser_client_id),
-            library_id: Set(library_id),
-            base_clock: Set(base_clock),
-            to_clock: Set(to_clock),
-            status: Set(status.to_owned()),
-            request_hash: Set(request_hash),
-            summary_json: Set(serde_json::to_value(summary).expect("summary serializes")),
-            server_ops_json: Set(serde_json::to_value(server_ops).expect("server ops serialize")),
-            accepted_local_mutations_json: Set(serde_json::to_value(accepted_local_mutations)
-                .expect("accepted local mutations serialize")),
-            conflicts_json: Set(serde_json::to_value(conflicts).expect("conflicts serialize")),
+            user_id: Set(params.owner_user_id),
+            browser_client_id: Set(params.browser_client_id),
+            library_id: Set(params.library_id),
+            base_clock: Set(params.base_clock),
+            to_clock: Set(params.to_clock),
+            status: Set(params.status.to_owned()),
+            request_hash: Set(params.request_hash),
+            summary_json: Set(serde_json::to_value(params.summary).expect("summary serializes")),
+            server_ops_json: Set(
+                serde_json::to_value(params.server_ops).expect("server ops serialize")
+            ),
+            accepted_local_mutations_json: Set(serde_json::to_value(
+                params.accepted_local_mutations,
+            )
+            .expect("accepted local mutations serialize")),
+            conflicts_json: Set(
+                serde_json::to_value(params.conflicts).expect("conflicts serialize")
+            ),
             expires_at: Set(now() + Duration::minutes(10)),
             ..Default::default()
         }
@@ -598,8 +898,47 @@ pub fn profile_view(
                 action: rule.action,
                 matcher_type: rule.matcher_type,
                 matcher_value: rule.matcher_value,
+                options: rule.options_json,
             })
             .collect(),
+    }
+}
+
+pub fn target_view(model: sync_profile_targets::Model) -> SyncProfileTargetView {
+    SyncProfileTargetView {
+        id: model.id.to_string(),
+        platform: model.platform,
+        device_type: model.device_type,
+        device_id: model.device_id.map(|value| value.to_string()),
+        browser_family: model.browser_family,
+        browser_client_id: model.browser_client_id.map(|value| value.to_string()),
+    }
+}
+
+pub fn profile_detail_view(
+    model: sync_profiles::Model,
+    rules: Vec<sync_profile_rules::Model>,
+    targets: Vec<sync_profile_targets::Model>,
+) -> SyncProfileDetailView {
+    SyncProfileDetailView {
+        id: model.id.to_string(),
+        name: model.name,
+        mode: model.mode,
+        default_direction: model.default_direction,
+        conflict_policy: model.conflict_policy,
+        enabled: model.enabled,
+        rules: rules
+            .into_iter()
+            .map(|rule| SyncProfileRuleView {
+                id: rule.id.to_string(),
+                rule_order: rule.rule_order,
+                action: rule.action,
+                matcher_type: rule.matcher_type,
+                matcher_value: rule.matcher_value,
+                options: rule.options_json,
+            })
+            .collect(),
+        targets: targets.into_iter().map(target_view).collect(),
     }
 }
 

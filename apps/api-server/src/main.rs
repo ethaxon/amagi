@@ -2,18 +2,31 @@ mod app;
 mod error;
 mod http;
 
-use amagi_config::ApiServerConfig;
+use std::path::PathBuf;
+
+use amagi_config::{ApiServerConfig, ConfigLoadOptions};
+use clap::Parser;
 use tokio::net::TcpListener;
 use tracing::info;
 use tracing_subscriber::{EnvFilter, fmt};
 
 use crate::error::{Result, ServerError};
 
+#[derive(Debug, Parser)]
+#[command(name = "amagi-api-server")]
+struct ApiServerCli {
+    #[arg(long, value_name = "FILE")]
+    config: Option<PathBuf>,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     init_tracing();
 
-    let config = ApiServerConfig::load()?;
+    let cli = ApiServerCli::parse();
+    let config = ApiServerConfig::load_with_options(ConfigLoadOptions {
+        config_file: cli.config,
+    })?;
     let bind_addr = config.bind_addr()?;
     let state = app::build_state(config).await;
     let router = app::build_app(state);

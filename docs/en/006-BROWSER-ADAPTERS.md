@@ -47,13 +47,20 @@ Safari is a special case. The first stage should not promise full bidirectional 
 
 ## 3. Adapter Abstract Interface
 
-The current Iter8 baseline landed shared abstractions in `packages/sync-client`:
+The current Iter9 baseline lands shared abstractions in `packages/amagi-sync-client`:
 
 ```typescript
+interface LocalApplyResult {
+  createdMappings: Array<{
+    serverNodeId: string;
+    clientExternalId: string;
+  }>;
+}
+
 interface SyncAdapter {
   getCapabilities(): Promise<AdapterCapabilities>;
   loadTree(): Promise<LocalBookmarkNode[]>;
-  applyLocalPlan(plan: LocalApplyOp[]): Promise<void>;
+  applyLocalPlan(plan: LocalApplyOp[]): Promise<LocalApplyResult>;
 }
 ```
 
@@ -61,6 +68,7 @@ Notes:
 
 - Sync core handles local tree normalization, diff, preview/apply orchestration, server ops -> local apply plan.
 - WXT / WebExtension adapter only handles real browser API calls, capability probing, and local state persistence.
+- `LocalApplyResult.createdMappings` is used to write browser-generated `clientExternalId` values for server-created local nodes back into sync state mapping.
 - This round does not implement change event driving; still uses manual scan as the primary method.
 
 ---
@@ -86,18 +94,24 @@ Considered the primary platform, targeting support for:
 - Background message shell
 - Popup/options placeholder UI
 
-The current Iter8 baseline implements a pre-migration Chromium-only baseline:
+The current Iter10 baseline implements a WXT + WebExtension baseline:
 
-- `packages/browser-adapter-chromium`
-  - `createChromiumBookmarkAdapter(chromeLike)`
-  - `createChromiumStorage(chrome.storage.local)`
-  - `chrome.bookmarks.getTree()` -> `LocalBookmarkNode[]`
-  - `LocalApplyOp[]` -> `chrome.bookmarks.create/update/move/remove/removeTree`
+- `packages/amagi-webext`
+  - `createWebExtBookmarkAdapter({ browser })`
+  - `createWebExtStorage({ storageArea: browser.storage.local })`
+  - `detectWebExtCapabilities(browserLike)`
+  - `browser.bookmarks.getTree()` -> `LocalBookmarkNode[]`
+  - `LocalApplyOp[]` -> `browser.bookmarks.create/update/move/remove/removeTree`
+  - Server-created local node create -> local created mapping delta
 - `apps/extension-web`
-  - MV3 manifest generation
-  - Background service worker
-  - Popup/options shell
-  - `amagi.sync.preview` / `amagi.sync.apply` / `amagi.sync.status` message baseline
+  - WXT `entrypoints/background.ts`
+  - WXT `entrypoints/popup/index.html`
+  - WXT `entrypoints/options/index.html`
+  - Typed `amagi.sync.preview` / `amagi.sync.apply` / `amagi.sync.status` message baseline
+  - Chrome MV3 real extension load smoke (Playwright Chromium persistent context + popup page check)
+  - Firefox / Safari build + manifest smoke baseline
+  - Host permissions limited to `http://localhost/*` and `http://127.0.0.1/*`
+  - Runtime config validation before options save and background sync
 
 Currently not yet implemented:
 
@@ -105,7 +119,8 @@ Currently not yet implemented:
 - Side panel
 - Complete preview/apply UI interaction
 - Conflict resolution UI
-- Complete mapping reconciliation for server-created local nodes
+- Real extension OIDC / token-set login loop
+- Firefox / Safari real browser load smoke
 
 ### 4.2 Recommended Extension Architecture
 
@@ -122,7 +137,7 @@ WXT is only used for:
 - Producing build output for Chromium / Firefox
 - Hosting React / Vite and other UI page containers
 
-The actual sync flow orchestration should call shared packages and WXT/WebExtension adapter, rather than writing business logic directly in extension entrypoint files.
+The actual sync flow orchestration should call shared packages and `packages/amagi-webext`, rather than writing business logic directly in extension entrypoint files.
 
 ### 4.3 Recommended Local State Storage
 
@@ -130,7 +145,7 @@ The actual sync flow orchestration should call shared packages and WXT/WebExtens
 - Dev-only auth config placeholder
 - Local mapping cache
 - Last normalized tree snapshot
-- Pending apply state
+- Pending preview / pending recovery state
 - Profile selection
 
 ### 4.4 Minimal UI
@@ -144,7 +159,17 @@ Should at minimum include:
 - Last sync status
 - Conflict count
 
-### 4.5 Things Not Recommended
+### 4.5 Host Permission and Runtime Config Baseline
+
+- Do not add `<all_urls>` to the manifest
+- First-stage host permissions stay limited to `http://localhost/*` and `http://127.0.0.1/*`
+- Validate `apiBaseUrl` and `oidcSource` before both options save and background sync
+- The popup exposes Login / Clear Auth / Preview Manual Sync / Apply Manual Sync; the options page is the primary extension auth entrypoint and shows token-set status
+- Background manual sync reads the authorization header from the shared auth helper first; `devBearerToken` remains only as an advanced fallback
+- Production self-hosted HTTPS hosts and optional permissions remain future work
+- WXT dev runner should keep persistent browser profiles under `temp/chrome-user-data` and `temp/firefox-user-data` so local extension options and test bookmark trees survive `just dev` restarts. These directories are local-only and ignored by git.
+
+### 4.6 Things Not Recommended
 
 - Do not default to silent background bidirectional auto-sync
 - Do not mix vault content directly into the local bookmark tree
@@ -253,11 +278,11 @@ But this does not change the cloud sync model.
 
 Recommend establishing:
 
-- `packages/sync-client`
-- `packages/browser-adapter-webext` or `apps/extension-web/src/adapter`
+- `packages/amagi-sync-client`
+- `packages/amagi-webext` or `apps/extension-web/src/extension`
 - `apps/extension-web` (WXT-based extension shell)
 
-`packages/browser-adapter-chromium` is an Iter8 transitional baseline. The path forward should not expand into three separate packages (`browser-adapter-chromium`, `browser-adapter-firefox`, `browser-adapter-safari`), but converge into a WXT/WebExtension adapter with limited platform capability overrides.
+Iter9 completes the migration from `packages/browser-adapter-chromium` to `packages/amagi-webext`. The path forward should not expand into three separate packages (`browser-adapter-chromium`, `browser-adapter-firefox`, `browser-adapter-safari`), but continue converging in a WXT/WebExtension adapter with limited platform capability overrides.
 
 ### 8.1 `sync-client` Responsibilities
 

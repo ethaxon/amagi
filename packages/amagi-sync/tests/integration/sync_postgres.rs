@@ -8,7 +8,7 @@ use amagi_db::{
 use amagi_sync::{
     BrowserClientRegistrationRequest, CursorAckRequest, DeviceRegistrationRequest, FeedRequest,
     LocalMutationInput, RegisterClientRequest, SyncApplyRequest, SyncPreviewRequest, SyncService,
-    SyncSessionStartRequest,
+    SyncSessionStartRequest, UpdateSyncProfileRequest,
 };
 use amagi_test_utils::postgres::{StartedPostgres, start_amagi_postgres};
 use chrono::{Duration, Utc};
@@ -369,11 +369,17 @@ async fn sync_service_rejects_cross_library_mutation_targets() {
     ));
 
     let tree_a = bookmarks
-        .tree(user_id, Uuid::parse_str(&library_a_id).expect("library a id is uuid"))
+        .tree(
+            user_id,
+            Uuid::parse_str(&library_a_id).expect("library a id is uuid"),
+        )
         .await
         .expect("tree a loads");
     let tree_b = bookmarks
-        .tree(user_id, Uuid::parse_str(&library_b_id).expect("library b id is uuid"))
+        .tree(
+            user_id,
+            Uuid::parse_str(&library_b_id).expect("library b id is uuid"),
+        )
         .await
         .expect("tree b loads");
     assert_eq!(tree_a.library.current_revision_clock, 1);
@@ -473,7 +479,10 @@ async fn sync_service_rejects_duplicate_client_external_id_create() {
     ));
 
     let tree = bookmarks
-        .tree(user_id, Uuid::parse_str(&library_id).expect("library id is uuid"))
+        .tree(
+            user_id,
+            Uuid::parse_str(&library_id).expect("library id is uuid"),
+        )
         .await
         .expect("tree loads");
     assert_eq!(tree.library.current_revision_clock, 2);
@@ -555,7 +564,10 @@ async fn sync_service_replays_applied_preview_even_after_expiry() {
     assert_eq!(replay, first_apply);
 
     let tree = bookmarks
-        .tree(user_id, Uuid::parse_str(&library_id).expect("library id is uuid"))
+        .tree(
+            user_id,
+            Uuid::parse_str(&library_id).expect("library id is uuid"),
+        )
         .await
         .expect("tree loads");
     assert_eq!(tree.library.current_revision_clock, 2);
@@ -563,6 +575,116 @@ async fn sync_service_replays_applied_preview_even_after_expiry() {
     let stored_preview = load_preview(&database, user_id, preview_id).await;
     assert_eq!(stored_preview.status, "applied");
     assert!(stored_preview.applied_at.is_some());
+}
+
+#[tokio::test]
+async fn sync_service_rejects_disabled_profiles_for_runtime_selection() {
+    let (_postgres, database, sync, bookmarks) = services().await;
+    let user_id = Uuid::now_v7();
+    insert_user(&database, user_id).await;
+
+    let register = register_client(&sync, user_id, "ext-disabled-profile").await;
+    let library = create_normal_library(&bookmarks, user_id, "Default").await;
+    let library_id = library.library.id.clone();
+
+    let disabled_profile = sync
+        .create_profile(
+            user_id,
+            &amagi_sync::CreateSyncProfileRequest {
+                name: "Disabled Manual".to_owned(),
+                mode: "manual".to_owned(),
+                default_direction: "pull".to_owned(),
+                conflict_policy: "manual".to_owned(),
+            },
+        )
+        .await
+        .expect("second manual profile creates");
+
+    let disabled_profile = sync
+        .update_profile(
+            user_id,
+            Uuid::parse_str(&disabled_profile.id).expect("profile id is uuid"),
+            &UpdateSyncProfileRequest {
+                name: None,
+                enabled: Some(false),
+                default_direction: None,
+                conflict_policy: None,
+            },
+        )
+        .await
+        .expect("second manual profile can be disabled");
+    assert!(!disabled_profile.enabled);
+
+    let session = sync
+        .start_session(
+            user_id,
+            &SyncSessionStartRequest {
+                browser_client_id: register.browser_client.id.clone(),
+                preferred_profile_id: None,
+                local_capability_summary: json!({}),
+            },
+        )
+        .await
+        .expect("session start succeeds with enabled default profile");
+    assert_eq!(session.available_profiles.len(), 1);
+    assert_eq!(
+        session.available_profiles[0].id,
+        register.default_profile.id
+    );
+    assert_eq!(session.selected_profile.id, register.default_profile.id);
+
+    let preferred_disabled = sync
+        .start_session(
+            user_id,
+            &SyncSessionStartRequest {
+                browser_client_id: register.browser_client.id.clone(),
+                preferred_profile_id: Some(disabled_profile.id.clone()),
+                local_capability_summary: json!({}),
+            },
+        )
+        .await
+        .expect_err("disabled preferred profile is rejected");
+    assert!(matches!(
+        preferred_disabled,
+        amagi_sync::SyncError::ProfileDisabled
+    ));
+
+    let preview_disabled = sync
+        .preview(
+            user_id,
+            &SyncPreviewRequest {
+                browser_client_id: register.browser_client.id.clone(),
+                profile_id: disabled_profile.id.clone(),
+                library_id: library_id.clone(),
+                base_clock: 1,
+                local_snapshot_summary: json!({}),
+                local_mutations: vec![],
+            },
+        )
+        .await
+        .expect_err("disabled profile cannot be used for preview");
+    assert!(matches!(
+        preview_disabled,
+        amagi_sync::SyncError::ProfileDisabled
+    ));
+
+    let feed_disabled = sync
+        .feed(
+            user_id,
+            &FeedRequest {
+                browser_client_id: register.browser_client.id.clone(),
+                library_id: library_id.clone(),
+                from_clock: 0,
+                profile_id: Some(disabled_profile.id),
+                limit: Some(100),
+            },
+        )
+        .await
+        .expect_err("disabled profile cannot be used for feed");
+    assert!(matches!(
+        feed_disabled,
+        amagi_sync::SyncError::ProfileDisabled
+    ));
 }
 
 async fn services() -> (
@@ -605,30 +727,33 @@ async fn insert_user(database: &DatabaseService, user_id: Uuid) {
     txn.commit().await.expect("user transaction commits");
 }
 
-async fn register_client(sync: &SyncService, user_id: Uuid, extension_instance_id: &str) -> amagi_sync::RegisterClientResponse {
-    sync
-        .register_client(
-            user_id,
-            &RegisterClientRequest {
-                device: DeviceRegistrationRequest {
-                    device_id: None,
-                    device_name: "My Mac".to_owned(),
-                    device_type: "desktop".to_owned(),
-                    platform: "macos".to_owned(),
-                },
-                browser_client: BrowserClientRegistrationRequest {
-                    browser_family: "chrome".to_owned(),
-                    browser_profile_name: Some("Default".to_owned()),
-                    extension_instance_id: extension_instance_id.to_owned(),
-                    capabilities: json!({
-                        "can_read_bookmarks": true,
-                        "can_write_bookmarks": true,
-                    }),
-                },
+async fn register_client(
+    sync: &SyncService,
+    user_id: Uuid,
+    extension_instance_id: &str,
+) -> amagi_sync::RegisterClientResponse {
+    sync.register_client(
+        user_id,
+        &RegisterClientRequest {
+            device: DeviceRegistrationRequest {
+                device_id: None,
+                device_name: "My Mac".to_owned(),
+                device_type: "desktop".to_owned(),
+                platform: "macos".to_owned(),
             },
-        )
-        .await
-        .expect("client registration succeeds")
+            browser_client: BrowserClientRegistrationRequest {
+                browser_family: "chrome".to_owned(),
+                browser_profile_name: Some("Default".to_owned()),
+                extension_instance_id: extension_instance_id.to_owned(),
+                capabilities: json!({
+                    "can_read_bookmarks": true,
+                    "can_write_bookmarks": true,
+                }),
+            },
+        },
+    )
+    .await
+    .expect("client registration succeeds")
 }
 
 async fn create_normal_library(
@@ -666,14 +791,17 @@ async fn expire_preview(database: &DatabaseService, user_id: Uuid, preview_id: U
         .expect("preview exists");
     let mut active = preview.into_active_model();
     active.expires_at = Set((Utc::now() - Duration::minutes(30)).fixed_offset());
-    active
-        .update(&txn)
+    active.update(&txn).await.expect("preview expiry updates");
+    txn.commit()
         .await
-        .expect("preview expiry updates");
-    txn.commit().await.expect("preview update transaction commits");
+        .expect("preview update transaction commits");
 }
 
-async fn load_preview(database: &DatabaseService, user_id: Uuid, preview_id: Uuid) -> sync_previews::Model {
+async fn load_preview(
+    database: &DatabaseService,
+    user_id: Uuid,
+    preview_id: Uuid,
+) -> sync_previews::Model {
     let txn = database
         .runtime()
         .expect("database runtime is available")
@@ -689,6 +817,8 @@ async fn load_preview(database: &DatabaseService, user_id: Uuid, preview_id: Uui
         .await
         .expect("preview loads")
         .expect("preview exists");
-    txn.rollback().await.expect("preview load transaction rolls back");
+    txn.rollback()
+        .await
+        .expect("preview load transaction rolls back");
     preview
 }

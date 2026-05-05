@@ -1,6 +1,19 @@
-# amagi
+<img src="./assets/icons/cel/icon-1024.png" width="400" height="400" alt="amagi" align="right" />
+<div align="center">
 
-amagi 是一个自托管的收藏夹控制平面（bookmark control plane）。
+# Amagi
+
+>
+> — **𝓣𝓱𝓮 𝓔𝔁𝓬𝓮𝓹𝓽𝓲𝓸𝓷𝓪𝓵 𝓑𝓸𝓸𝓴𝓶𝓪𝓻𝓴-𝓜𝓪𝓷𝓪𝓰𝓲𝓷𝓰 𝓜𝓪𝓲𝓭 𝓐𝓷𝓭𝓻𝓸𝓲𝓭-**
+>
+
+<!-- placeholder for badgets -->
+
+</div>
+
+## 📖 Introduction
+
+Amagi 是一个自托管的收藏夹控制平面（bookmark control plane）。
 
 它不是单纯的书签同步器。项目围绕云端持有收藏状态、规则驱动投影、手动 preview/apply 同步、浏览器能力差异，以及默认不进入普通浏览器书签树的私密 vault library 来设计。
 
@@ -50,12 +63,14 @@ just setup
 just dev-deps
 ```
 
+Iter12 happy path 中，`just dev` 和 `just dev-api` 会默认加载 `dev/amagi.config.local.toml`。本地 Dex 演示账号为 `amagi/amagi`，Dashboard 登录回跳到 `http://127.0.0.1:4174/auth/token-set/oidc/source/default/callback`，`devBearerToken` 现在只作为前端 SDK 排障时的 advanced fallback。
+
 常用循环：
 
 ```bash
 just dev-api
 just dev-dashboard
-just dev-extension
+just dev-extension-chrome
 just lint
 just typecheck
 just test

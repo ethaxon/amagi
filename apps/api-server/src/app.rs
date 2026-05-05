@@ -7,6 +7,7 @@ use amagi_db::DatabaseService;
 use amagi_securitydept::AuthRuntime;
 use amagi_sync::SyncService;
 use axum::Router;
+use tower_http::cors::CorsLayer;
 #[cfg(test)]
 use uuid::Uuid;
 
@@ -52,14 +53,39 @@ pub async fn build_state(config: ApiServerConfig) -> AppState {
 }
 
 pub fn build_app(state: AppState) -> Router {
-    routes::router().with_state(state)
+    routes::router()
+        .layer(dashboard_dev_cors_layer())
+        .with_state(state)
+}
+
+fn dashboard_dev_cors_layer() -> CorsLayer {
+    use axum::http::{HeaderValue, Method, header};
+
+    CorsLayer::new()
+        .allow_origin([
+            HeaderValue::from_static("http://localhost:4174"),
+            HeaderValue::from_static("http://127.0.0.1:4174"),
+        ])
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PATCH,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers([
+            header::ACCEPT,
+            header::AUTHORIZATION,
+            header::CONTENT_TYPE,
+            header::HeaderName::from_static("x-amagi-oidc-source"),
+        ])
 }
 
 #[cfg(test)]
 mod tests {
     use axum::{
         body::{Body, to_bytes},
-        http::{Request, StatusCode},
+        http::{Request, StatusCode, header},
     };
     use serde_json::Value;
     use tower::ServiceExt;
@@ -115,5 +141,45 @@ mod tests {
 
         assert_eq!(payload["status"], "not_ready");
         assert_eq!(payload["database"]["state"], "not_configured");
+    }
+
+    #[tokio::test]
+    async fn dashboard_dev_origin_preflight_is_allowed() {
+        let app = build_app(build_state(ApiServerConfig::default()).await);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("OPTIONS")
+                    .uri("/api/v1/dashboard/sync-profiles")
+                    .header(header::ORIGIN, "http://localhost:4174")
+                    .header(header::ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                    .header(
+                        header::ACCESS_CONTROL_REQUEST_HEADERS,
+                        "authorization,x-amagi-oidc-source,content-type",
+                    )
+                    .body(Body::empty())
+                    .expect("request builds"),
+            )
+            .await
+            .expect("router responds");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+                .and_then(|value| value.to_str().ok()),
+            Some("http://localhost:4174")
+        );
+        let allowed_headers = response
+            .headers()
+            .get(header::ACCESS_CONTROL_ALLOW_HEADERS)
+            .and_then(|value| value.to_str().ok())
+            .expect("allow headers present")
+            .to_ascii_lowercase();
+        assert!(allowed_headers.contains("authorization"));
+        assert!(allowed_headers.contains("content-type"));
+        assert!(allowed_headers.contains("x-amagi-oidc-source"));
     }
 }

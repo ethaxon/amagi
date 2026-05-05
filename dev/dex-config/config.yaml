@@ -29,8 +29,8 @@ staticClients:
     redirectURIs:
       - http://127.0.0.1:7800/api/auth/token-set/oidc/source/default/callback
       - http://localhost:7800/api/auth/token-set/oidc/source/default/callback
-      - http://127.0.0.1:7800/auth/token-set/oidc/source/default/callback
-      - http://localhost:7800/auth/token-set/oidc/source/default/callback
+        - http://127.0.0.1:4174/auth/token-set/oidc/source/default/callback
+        - http://localhost:4174/auth/token-set/oidc/source/default/callback
 
 enablePasswordDB: true
 

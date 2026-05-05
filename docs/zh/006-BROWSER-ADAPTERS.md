@@ -47,13 +47,20 @@ Safari 是特例。首阶段不应承诺完整原生书签树双向同步。
 
 ## 3. 适配器抽象接口
 
-当前 Iter8 baseline 已落地的共享抽象位于 `packages/sync-client`：
+当前 Iter9 baseline 已落地的共享抽象位于 `packages/amagi-sync-client`：
 
 ```typescript
+interface LocalApplyResult {
+  createdMappings: Array<{
+    serverNodeId: string;
+    clientExternalId: string;
+  }>;
+}
+
 interface SyncAdapter {
   getCapabilities(): Promise<AdapterCapabilities>;
   loadTree(): Promise<LocalBookmarkNode[]>;
-  applyLocalPlan(plan: LocalApplyOp[]): Promise<void>;
+  applyLocalPlan(plan: LocalApplyOp[]): Promise<LocalApplyResult>;
 }
 ```
 
@@ -61,6 +68,7 @@ interface SyncAdapter {
 
 - sync core 负责 local tree normalization、diff、preview/apply orchestration、server ops -> local apply plan。
 - WXT / WebExtension adapter 只负责真实浏览器 API 调用、能力探测与本地 state 落盘。
+- `LocalApplyResult.createdMappings` 用于把 server-created local node 在浏览器侧新生成的 `clientExternalId` 回填回 sync state mapping。
 - 本轮没有实现 change event 驱动；仍然以 manual scan 为主。
 
 ---
@@ -86,18 +94,24 @@ interface SyncAdapter {
 - background message shell
 - popup/options 占位 UI
 
-当前 Iter8 baseline 已实现的是迁移前的 Chromium-only 基线：
+当前 Iter10 baseline 已实现的是 WXT + WebExtension 基线：
 
-- `packages/browser-adapter-chromium`
-  - `createChromiumBookmarkAdapter(chromeLike)`
-  - `createChromiumStorage(chrome.storage.local)`
-  - `chrome.bookmarks.getTree()` -> `LocalBookmarkNode[]`
-  - `LocalApplyOp[]` -> `chrome.bookmarks.create/update/move/remove/removeTree`
+- `packages/amagi-webext`
+  - `createWebExtBookmarkAdapter({ browser })`
+  - `createWebExtStorage({ storageArea: browser.storage.local })`
+  - `detectWebExtCapabilities(browserLike)`
+  - `browser.bookmarks.getTree()` -> `LocalBookmarkNode[]`
+  - `LocalApplyOp[]` -> `browser.bookmarks.create/update/move/remove/removeTree`
+  - server-created local node create -> local created mapping delta
 - `apps/extension-web`
-  - MV3 manifest 生成
-  - background service worker
-  - popup/options shell
-  - `amagi.sync.preview` / `amagi.sync.apply` / `amagi.sync.status` message baseline
+  - WXT `entrypoints/background.ts`
+  - WXT `entrypoints/popup/index.html`
+  - WXT `entrypoints/options/index.html`
+  - `amagi.sync.preview` / `amagi.sync.apply` / `amagi.sync.status` typed message baseline
+  - Chrome MV3 real extension load smoke（Playwright Chromium persistent context + popup page check）
+  - Firefox / Safari build + manifest smoke baseline
+  - host permissions 仅保留 `http://localhost/*` 与 `http://127.0.0.1/*`
+  - options 保存与 background sync 前的 runtime config validation baseline
 
 当前仍未实现：
 
@@ -105,7 +119,8 @@ interface SyncAdapter {
 - side panel
 - 完整 preview/apply UI 交互
 - conflict resolution UI
-- server-created local node 的完整 mapping 回填
+- 真实 extension OIDC / token-set 登录闭环
+- Firefox / Safari 真实浏览器加载 smoke
 
 ### 4.2 扩展形态建议
 
@@ -122,7 +137,7 @@ WXT 只用于：
 - 产出 Chromium / Firefox 所需构建结果
 - 承载 React / Vite 等 UI 页面容器
 
-真正的同步流程编排应调用共享包和 WXT/WebExtension adapter，而不是直接把业务逻辑写死在扩展入口文件里。
+真正的同步流程编排应调用共享包和 `packages/amagi-webext`，而不是直接把业务逻辑写死在扩展入口文件里。
 
 ### 4.3 本地状态建议存储
 
@@ -130,7 +145,7 @@ WXT 只用于：
 - dev-only auth config 占位
 - local mapping cache
 - last normalized tree snapshot
-- pending apply state
+- pending preview / pending recovery state
 - profile selection
 
 ### 4.4 最小 UI
@@ -144,7 +159,17 @@ WXT 只用于：
 - last sync status
 - conflict count
 
-### 4.5 不建议做的事情
+### 4.5 Host permission 与 runtime config baseline
+
+- manifest 不引入 `<all_urls>`
+- 本轮默认 host permission 只允许 `http://localhost/*` 与 `http://127.0.0.1/*`
+- options 保存与 background sync 前都要校验 `apiBaseUrl` 与 `oidcSource`
+- popup 提供 Login / Clear Auth / Preview Manual Sync / Apply Manual Sync；options 作为 extension auth 主入口并显示 token-set 状态
+- background manual sync 优先从 shared auth helper 读取 authorization header；`devBearerToken` 只保留为 advanced fallback
+- 生产自托管 HTTPS host 与 optional permissions 仍留作后续项
+- WXT dev runner 应将浏览器 profile 持久化到 `temp/chrome-user-data` 与 `temp/firefox-user-data`，保证本地 extension options 和测试书签树在 `just dev` 重启后不被清空。这些目录只属于本地开发，已被 git 忽略。
+
+### 4.6 不建议做的事情
 
 - 不要默认后台静默双向 auto sync
 - 不要把 vault 内容直接混入本地书签树
@@ -253,11 +278,11 @@ Safari 不作为首阶段"原生书签树完整双向同步"平台。
 
 建议建立：
 
-- `packages/sync-client`
-- `packages/browser-adapter-webext` 或 `apps/extension-web/src/adapter`
+- `packages/amagi-sync-client`
+- `packages/amagi-webext` 或 `apps/extension-web/src/extension`
 - `apps/extension-web`（基于 WXT 的扩展壳层）
 
-`packages/browser-adapter-chromium` 是 Iter8 的过渡基线。后续不应继续沿着 `browser-adapter-chromium`、`browser-adapter-firefox`、`browser-adapter-safari` 三套包扩张，而应收敛成 WXT/WebExtension adapter 加少量平台 capability override。
+Iter9 已完成从 `packages/browser-adapter-chromium` 过渡到 `packages/amagi-webext`。后续不应继续沿着 `browser-adapter-chromium`、`browser-adapter-firefox`、`browser-adapter-safari` 三套包扩张，而应继续收敛在 WXT/WebExtension adapter 加少量平台 capability override。
 
 ### 8.1 `sync-client` 负责
 

@@ -16,6 +16,8 @@ rustc-ice*
 
 # Web Dev
 /webui
+**/.wxt
+**/.output
 **/dist
 **/dist-tsc
 **/.vite

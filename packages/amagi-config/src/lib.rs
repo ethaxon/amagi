@@ -5,6 +5,7 @@ mod schema;
 mod validation;
 
 pub use error::{ConfigError, ConfigResult};
+pub use loader::ConfigLoadOptions;
 pub use model::{
     AccessTokenSubstrateSourceConfig, ApiServerConfig, BackendOidcFacadePathsConfig,
     BackendOidcSourceConfig, BooleanLike, DEFAULT_OIDC_SOURCE_KEY, DatabaseConfig,
@@ -74,6 +75,41 @@ mod tests {
         );
         assert!(config.oidc_sources.is_empty());
         assert!(config.default_oidc_source.is_none());
+    }
+
+    #[test]
+    fn explicit_config_file_path_overrides_env_selected_file() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "amagi-config-loader-{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&temp_dir).expect("temp dir is created");
+
+        let env_config_path = temp_dir.join("env-config.toml");
+        let cli_config_path = temp_dir.join("cli-config.toml");
+        fs::write(&env_config_path, "[server]\nport = 7810\n")
+            .expect("env config file is written");
+        fs::write(&cli_config_path, "[server]\nport = 7820\n")
+            .expect("cli config file is written");
+
+        with_env_vars(
+            &[(
+                "AMAGI_CONFIG_FILE",
+                env_config_path.to_str().expect("env config path is valid utf-8"),
+            )],
+            || {
+                let config = ApiServerConfig::load_with_options(ConfigLoadOptions {
+                    config_file: Some(cli_config_path.clone()),
+                })
+                .expect("config loads with explicit path");
+
+                assert_eq!(config.server.port, 7820);
+            },
+        );
+
+        fs::remove_file(env_config_path).expect("env config file is removed");
+        fs::remove_file(cli_config_path).expect("cli config file is removed");
+        fs::remove_dir(temp_dir).expect("temp dir is removed");
     }
 
     #[test]
@@ -495,10 +531,12 @@ mod tests {
         let schema_path = workspace_root().join("amagi.config.schema.json");
         let committed_schema =
             fs::read_to_string(&schema_path).expect("committed config schema exists");
+        let committed_schema_json: serde_json::Value = serde_json::from_str(&committed_schema)
+            .expect("committed config schema parses as JSON");
+        let generated_schema_json: serde_json::Value =
+            serde_json::from_str(&ApiServerConfig::config_schema_pretty_json())
+                .expect("generated config schema parses as JSON");
 
-        assert_eq!(
-            committed_schema.trim_end(),
-            ApiServerConfig::config_schema_pretty_json().trim_end()
-        );
+        assert_eq!(committed_schema_json, generated_schema_json);
     }
 }

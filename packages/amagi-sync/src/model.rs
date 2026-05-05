@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+fn empty_json_object() -> Value {
+    Value::Object(Default::default())
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RegisterClientRequest {
@@ -139,6 +143,55 @@ pub struct CursorAckRequest {
     pub last_ack_rev_id: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSyncProfileRequest {
+    pub name: String,
+    pub mode: String,
+    pub default_direction: String,
+    pub conflict_policy: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSyncProfileRequest {
+    pub name: Option<String>,
+    pub enabled: Option<bool>,
+    pub default_direction: Option<String>,
+    pub conflict_policy: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSyncProfileTargetRequest {
+    pub platform: Option<String>,
+    pub device_type: Option<String>,
+    pub device_id: Option<String>,
+    pub browser_family: Option<String>,
+    pub browser_client_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSyncProfileRuleRequest {
+    pub rule_order: i32,
+    pub action: String,
+    pub matcher_type: String,
+    pub matcher_value: String,
+    #[serde(default = "empty_json_object")]
+    pub options: Value,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSyncProfileRuleRequest {
+    pub rule_order: Option<i32>,
+    pub action: Option<String>,
+    pub matcher_type: Option<String>,
+    pub matcher_value: Option<String>,
+    pub options: Option<Value>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CursorAckResponse {
@@ -168,7 +221,7 @@ pub struct BrowserClientView {
     pub last_seen_at: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncProfileRuleView {
     pub id: String,
@@ -176,9 +229,21 @@ pub struct SyncProfileRuleView {
     pub action: String,
     pub matcher_type: String,
     pub matcher_value: String,
+    pub options: Value,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncProfileTargetView {
+    pub id: String,
+    pub platform: Option<String>,
+    pub device_type: Option<String>,
+    pub device_id: Option<String>,
+    pub browser_family: Option<String>,
+    pub browser_client_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncProfileView {
     pub id: String,
@@ -188,6 +253,19 @@ pub struct SyncProfileView {
     pub conflict_policy: String,
     pub enabled: bool,
     pub rules: Vec<SyncProfileRuleView>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncProfileDetailView {
+    pub id: String,
+    pub name: String,
+    pub mode: String,
+    pub default_direction: String,
+    pub conflict_policy: String,
+    pub enabled: bool,
+    pub rules: Vec<SyncProfileRuleView>,
+    pub targets: Vec<SyncProfileTargetView>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

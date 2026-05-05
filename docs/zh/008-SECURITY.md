@@ -286,6 +286,8 @@ vault 默认不出现在：
 
 扩展认证基线应优先使用 SecurityDept `token-set-context` 的 `backend-oidc` mode 产物，并由 amagi 绑定到具体 browser client / extension instance。不要把 Dashboard cookie session 当作扩展后台同步 API 的隐含凭据。
 
+当前实现中，Dashboard 与 extension 共享 `packages/amagi-auth-client` 作为前端 auth boundary；extension 通过 `browser.storage.local` 适配 SecurityDept record store，让 popup / options / background 共享同一份 token-set state。
+
 ### 8.2 本地存储最小化
 
 不要在普通扩展本地状态中持久化 vault 内容。

@@ -41,6 +41,7 @@ class FakeAdapter implements SyncAdapter {
 		if (this.failOnApply) {
 			throw new Error("adapter apply failed");
 		}
+		return { createdMappings: [] };
 	}
 }
 
@@ -532,11 +533,13 @@ describe("runManualSync", () => {
 				expect(plan).toHaveLength(1);
 				expect(plan[0]).toMatchObject({
 					kind: "create",
+					serverNodeId: "server-bookmark-1",
 					nodeType: "bookmark",
 					title: "Pulled Bookmark",
 					parentClientExternalId: "root",
 					url: "https://pulled.example",
 				});
+				return { createdMappings: [] };
 			},
 		};
 		const api = {

@@ -25,6 +25,17 @@ pub enum SyncError {
     #[snafu(display("sync profile was not found or is not visible to the current principal"))]
     ProfileNotFound,
 
+    #[snafu(display("sync profile is disabled and cannot be used by sync runtime"))]
+    ProfileDisabled,
+
+    #[snafu(display("sync profile rule was not found or is not visible to the current principal"))]
+    RuleNotFound,
+
+    #[snafu(display(
+        "sync profile target was not found or is not visible to the current principal"
+    ))]
+    TargetNotFound,
+
     #[snafu(display("library was not found or is not visible to the current principal"))]
     LibraryNotFound,
 
@@ -40,6 +51,9 @@ pub enum SyncError {
     #[snafu(display("sync apply requires explicit confirmation"))]
     ConfirmationRequired,
 
+    #[snafu(display("each user must retain at least one enabled manual sync profile"))]
+    LastEnabledManualProfile,
+
     #[snafu(display("vault sync is not supported in this iteration"))]
     VaultSyncNotSupported,
 }
@@ -54,11 +68,15 @@ impl SyncError {
             Self::BrowserClientNotFound => "browser_client_not_found",
             Self::DeviceNotFound => "device_not_found",
             Self::ProfileNotFound => "profile_not_found",
+            Self::ProfileDisabled => "profile_disabled",
+            Self::RuleNotFound => "rule_not_found",
+            Self::TargetNotFound => "target_not_found",
             Self::LibraryNotFound => "library_not_found",
             Self::PreviewNotFound => "preview_not_found",
             Self::PreviewExpired => "preview_expired",
             Self::PreviewStale => "preview_stale",
             Self::ConfirmationRequired => "confirmation_required",
+            Self::LastEnabledManualProfile => "last_enabled_manual_profile",
             Self::VaultSyncNotSupported => "vault_sync_not_supported",
         }
     }
@@ -69,8 +87,12 @@ impl SyncError {
             Self::BrowserClientNotFound
             | Self::DeviceNotFound
             | Self::ProfileNotFound
+            | Self::RuleNotFound
+            | Self::TargetNotFound
             | Self::LibraryNotFound
             | Self::PreviewNotFound => 404,
+            Self::ProfileDisabled => 400,
+            Self::LastEnabledManualProfile => 409,
             Self::DatabaseUnavailable => 503,
             Self::DatabaseQuery { .. } => 500,
             Self::PreviewExpired

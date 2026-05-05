@@ -1,8 +1,8 @@
 pub mod audit_events;
 pub mod auth_users;
-pub mod browser_clients;
 pub mod bookmark_meta;
 pub mod bookmark_nodes;
+pub mod browser_clients;
 pub mod devices;
 pub mod libraries;
 pub mod library_heads;

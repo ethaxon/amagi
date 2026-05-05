@@ -1,11 +1,15 @@
 packages:
-  - packages/amagi-browser-adapter-chromium
+  - packages/amagi-auth-client
+  - packages/amagi-webext
   - packages/amagi-sync-client
   - apps/dashboard-web
   - apps/extension-web
 allowBuilds:
   esbuild: true
+  sharp: true
+  spawn-sync: true
 
 onlyBuiltDependencies:
   - "@j178/prek"
   - esbuild
+  - spawn-sync

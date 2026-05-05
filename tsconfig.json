@@ -2,10 +2,13 @@
 	"files": [],
 	"references": [
 		{
+			"path": "./packages/amagi-auth-client/tsconfig.json"
+		},
+		{
 			"path": "./packages/amagi-sync-client/tsconfig.json"
 		},
 		{
-			"path": "./packages/amagi-browser-adapter-chromium/tsconfig.json"
+			"path": "./packages/amagi-webext/tsconfig.json"
 		},
 		{
 			"path": "./tsconfig.scripts.json"

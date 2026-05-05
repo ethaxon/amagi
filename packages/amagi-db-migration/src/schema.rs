@@ -9,13 +9,8 @@ pub async fn create_postgres_auto_update_ts_fn(
     col_name: &str,
 ) -> Result<(), DbErr> {
     let sql = format!(
-        "CREATE OR REPLACE FUNCTION update_{col_name}_column() \
-         RETURNS TRIGGER AS $$ \
-         BEGIN \
-             NEW.{col_name} = current_timestamp; \
-             RETURN NEW; \
-         END; \
-         $$ language 'plpgsql';"
+        "CREATE OR REPLACE FUNCTION update_{col_name}_column() RETURNS TRIGGER AS $$ BEGIN \
+         NEW.{col_name} = current_timestamp; RETURN NEW; END; $$ language 'plpgsql';"
     );
 
     manager.get_connection().execute_unprepared(&sql).await?;

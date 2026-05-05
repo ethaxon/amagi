@@ -24,7 +24,11 @@ impl BookmarkService {
         Self { database }
     }
 
-    pub fn bind_txn<'a>(&self, txn: &'a DatabaseTransaction, owner_user_id: Uuid) -> BookmarkTxn<'a> {
+    pub fn bind_txn<'a>(
+        &self,
+        txn: &'a DatabaseTransaction,
+        owner_user_id: Uuid,
+    ) -> BookmarkTxn<'a> {
         BookmarkTxn { txn, owner_user_id }
     }
 
@@ -71,7 +75,10 @@ impl BookmarkService {
         request: &UpdateNodeRequest,
     ) -> BookmarkResult<BookmarkNodeView> {
         let txn = self.begin_owner_txn(user_id).await?;
-        let result = self.bind_txn(&txn, user_id).update_node(node_id, request).await;
+        let result = self
+            .bind_txn(&txn, user_id)
+            .update_node(node_id, request)
+            .await;
         finish_write_txn(txn, result).await
     }
 
@@ -82,7 +89,10 @@ impl BookmarkService {
         request: &MoveNodeRequest,
     ) -> BookmarkResult<BookmarkNodeView> {
         let txn = self.begin_owner_txn(user_id).await?;
-        let result = self.bind_txn(&txn, user_id).move_node(node_id, request).await;
+        let result = self
+            .bind_txn(&txn, user_id)
+            .move_node(node_id, request)
+            .await;
         finish_write_txn(txn, result).await
     }
 

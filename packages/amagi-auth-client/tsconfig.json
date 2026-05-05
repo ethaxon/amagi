@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig.browser.json",
+	"compilerOptions": {
+		"outDir": "./dist-tsc",
+		"rootDir": "./src",
+		"paths": {
+			"*": ["./*"],
+			"@/*": ["./src/*"]
+		}
+	},
+	"include": ["src"]
+}

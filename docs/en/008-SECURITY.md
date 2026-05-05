@@ -286,6 +286,8 @@ Extensions need their own controlled session, related to but not identical to th
 
 The extension authentication baseline should preferentially use the SecurityDept `token-set-context` `backend-oidc` mode product, bound by amagi to the specific browser client / extension instance. Do not treat the Dashboard cookie session as an implicit credential for extension background sync API.
 
+In the current implementation, Dashboard and the extension share `packages/amagi-auth-client` as the frontend auth boundary; the extension adapts SecurityDept record stores onto `browser.storage.local` so popup, options, and background reuse the same token-set state.
+
 ### 8.2 Minimal Local Storage
 
 Do not persist vault content in regular extension local state.

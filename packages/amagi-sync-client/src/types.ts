@@ -1,4 +1,31 @@
-export type LocalNodeType = "folder" | "bookmark" | "separator";
+export const LocalNodeType = {
+	Folder: "folder",
+	Bookmark: "bookmark",
+	Separator: "separator",
+} as const;
+
+export type LocalNodeType = (typeof LocalNodeType)[keyof typeof LocalNodeType];
+
+export const LocalMutationOp = {
+	Create: "create",
+	Update: "update",
+	Move: "move",
+	Delete: "delete",
+	Restore: "restore",
+} as const;
+
+export type LocalMutationOp =
+	(typeof LocalMutationOp)[keyof typeof LocalMutationOp];
+
+export const ManualSyncStatus = {
+	Synced: "synced",
+	NeedsUserResolution: "needs-user-resolution",
+	AwaitingConfirmation: "awaiting-confirmation",
+	RecoveryRequired: "recovery-required",
+} as const;
+
+export type ManualSyncStatus =
+	(typeof ManualSyncStatus)[keyof typeof ManualSyncStatus];
 
 export interface DeviceRegistrationRequest {
 	deviceId: string | null;
@@ -25,6 +52,7 @@ export interface SyncProfileRuleView {
 	action: string;
 	matcherType: string;
 	matcherValue: string;
+	options: Record<string, unknown>;
 }
 
 export interface SyncProfileView {
@@ -123,7 +151,7 @@ export interface FeedResponse {
 
 export interface LocalMutationInput {
 	clientMutationId: string;
-	op: "create" | "update" | "move" | "delete" | "restore";
+	op: LocalMutationOp;
 	serverNodeId: string | null;
 	clientExternalId: string | null;
 	parentServerNodeId: string | null;
@@ -148,7 +176,7 @@ export interface SyncConflictView {
 
 export interface AcceptedLocalMutationView {
 	clientMutationId: string;
-	op: string;
+	op: LocalMutationOp;
 	serverNodeId: string | null;
 	clientExternalId: string | null;
 	parentServerNodeId: string | null;

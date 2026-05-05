@@ -202,24 +202,25 @@ Responsibilities:
 - In-transaction reuse of `packages/amagi-bookmarks`'s transaction-scoped mutation boundary
 - Keep `apps/api-server` as a thin app crate; sync business logic is not written in route handlers
 
-### 5.2 `packages/browser-adapter-webext`
+### 5.2 `packages/amagi-webext`
 
 Responsibilities:
 
 - WXT / WebExtension bookmarks API encapsulation
 - Local node id / tree extraction
 - Apply ops
-- Extension sync state persistence via `browser.storage.local` / `chrome.storage.local`
+- Extension sync state persistence via `browser.storage.local`
 - Platform capability detection
 - Necessary Chrome/Firefox/Safari compatibility overrides
 
-The current Iter8 baseline `packages/browser-adapter-chromium` is a transitional implementation:
+The current Iter9 baseline completes the migration from the transitional implementation to a shared package:
 
-- `src/chromium-bookmarks.ts`
-- `src/chromium-storage.ts`
-- Fake `chrome`-driven Node tests
+- `src/browser-bookmarks.ts`
+- `src/browser-storage.ts`
+- `src/capabilities.ts`
+- Fake `browser`-driven Node tests
 
-Should be migrated/converged to WXT/WebExtension adapter, rather than continuing to expand into three long-term maintained adapter packages for Chromium / Firefox / Safari.
+Do not expand this back into three long-term maintained adapter packages for Chromium / Firefox / Safari; future browser differences should continue to converge inside `packages/amagi-webext` and WXT target configuration.
 
 ### 5.3 Safari Degraded Adapter
 
@@ -321,19 +322,17 @@ Deliverables:
 
 - Actual desktop browser manual sync loop
 
-Current Iter8 has entered the pre-migration baseline of this phase:
+Current Iter10 has advanced this phase to the following baseline:
 
-- `packages/sync-client` provides typed Sync API client, local tree normalization, diff baseline, apply plan baseline, manual sync orchestrator, and Node tests.
-- `packages/browser-adapter-chromium` provides Chromium bookmarks/storage adapter baseline and fake-chrome tests.
-- `apps/extension-web` provides MV3 manifest/background/popup/options build output baseline.
+- `packages/amagi-sync-client` provides typed Sync API client, local tree normalization, diff baseline, apply plan baseline, manual sync orchestrator, and Node tests.
+- `packages/amagi-webext` provides the WebExtension bookmarks/storage adapter baseline, capability detection, and fake-browser tests.
+- `apps/extension-web` now provides the WXT-based background/popup/options build output baseline, validated for Chrome MV3 build + real extension load smoke, Firefox build + manifest smoke, and Safari build + manifest smoke.
+- Mapping reconciliation for server-created local nodes is now completed by `amagi-sync-client` + `amagi-webext`.
 
 Current gaps:
 
-- `apps/extension-web` has not yet been migrated to a WXT app.
-- Chromium-only adapter has not yet been converged into a WXT/WebExtension adapter.
-- Firefox build has not yet been verified with the same WXT app.
 - Automatic background sync, conflict resolution UI, and full options/popup state management are not yet implemented.
-- Full mapping reconciliation for server-created local nodes is not yet implemented.
+- The extension now has a minimal token-set login loop via `packages/amagi-auth-client`, and background manual sync can inject the bearer principal from shared auth state; optional permission authorization for production self-hosted hosts remains future work.
 
 ### Phase 5: Sync Profiles and Rules
 
@@ -380,7 +379,7 @@ Goals:
 
 ## 7. First-Stage MVP Definition
 
-The first-stage MVP centers on "desktop browser + Dashboard + basic vault capabilities".
+The first-stage MVP now centers first on "desktop browser + Dashboard + a real local auth/sync happy path". Basic vault capabilities remain important, but they are no longer blockers before the experiential demo loop is working.
 
 Must complete:
 
@@ -391,12 +390,14 @@ Must complete:
 - WXT Chromium extension MVP
 - WXT Firefox build baseline
 - Sync profile + rules basics
-- Vault library + unlock session
-- WebAuthn basics
+- SecurityDept token-set frontend SDK integration
+- Local Dex login, account binding, and Dashboard/extension manual sync loop
 - Conflicts basic view
 
 Can defer:
 
+- Vault library + unlock session
+- WebAuthn basics
 - Archive worker
 - Advanced search relevance
 - Safari native tree sync
@@ -515,8 +516,8 @@ Recommend at minimum:
 Development seeds can be provided:
 
 - Demo normal library
-- Demo vault library
 - Sample sync profile
+- Demo vault library should be added when the vault iteration begins; the current happy-path demo must not depend on vault seed data
 
 ---
 
@@ -622,7 +623,7 @@ Implementation iteration documents are uniformly named: Guide uses `temp/IMPL_IT
 
 ### T9 Migrate WXT extension MVP
 
-### T10 Converge WebExtension adapter and verify Firefox build
+### T10 Converge the WebExtension adapter, complete mapping reconcile, and establish a Chrome/Firefox/Safari smoke baseline
 
 Additional constraints:
 
@@ -630,10 +631,28 @@ Additional constraints:
 - Chromium / Firefox / Safari differences are primarily handled through WXT target, manifest version, entrypoint include-exclude, and runtime feature detection
 - Do not maintain three sets of browser adapter packages long-term; only retain WXT/WebExtension adapter and necessary platform overrides
 - `sync-core` does not directly depend on WXT
+- Chrome MV3 must have a real extension load smoke; Firefox / Safari stay at build + manifest smoke baseline
+- `<all_urls>` does not enter the current manifest; localhost host permissions and the dev-only bearer token remain a development-only entry path
 
 ### T11 Implement sync profiles / rules UI and API
 
-### T12 Implement vault library + unlock session + WebAuthn
+Additional constraints:
+
+- In Iter11, `apps/dashboard-web` may first ship as a single-screen sync-management baseline instead of a full multi-page app
+- The dev bearer token + localStorage flow is only a development entry point, not a production login UX
+- TanStack Router / Query or similar infrastructure should be introduced only when real multi-page routing and shared async state needs appear
+
+### T12 Complete the local SecurityDept token-set login and manual sync happy path
+
+Additional constraints:
+
+- `just dev` should start Postgres, Dex, the API server, Dashboard Web, and the WXT extension, and provide a locally explorable loop.
+- Dashboard Web and the extension must no longer use manually entered `devBearerToken` as the main path; the main path must come from the SecurityDept token-set frontend SDK auth snapshot / authorization header.
+- Local Dex uses `amagi/amagi`; the OIDC source is `default`; client id / secret must match the committed local demo config.
+- The demo loop must at least cover login, account binding, creating or reading a normal library, extension register/start session, preview, apply, and ack or equivalent cursor advancement verification.
+- The dev-only bearer token can remain temporarily as a test fallback, but UI and docs must clearly state that it is not the default happy path.
+
+### T13 Implement vault library + unlock session + WebAuthn
 
 ---
 

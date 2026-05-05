@@ -75,6 +75,7 @@ describe("buildLocalApplyPlan", () => {
 		expect(plan[3]?.phase).toBe(4);
 		expect(plan[0]).toMatchObject({
 			kind: "create",
+			serverNodeId: "server-1",
 			parentClientExternalId: "root",
 			title: "Folder",
 			sortKey: "a1",

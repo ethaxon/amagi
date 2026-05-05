@@ -2,19 +2,21 @@
 	"extends": "../../tsconfig.browser.json",
 	"compilerOptions": {
 		"outDir": "./dist-tsc/app",
-		"rootDir": "./src",
-		"paths": {
-			"*": ["./*"],
-			"@/*": ["./src/*"]
-		}
+		"rootDir": "."
 	},
-	"include": ["src"],
+	"include": [
+		"src",
+		"entrypoints",
+		"scripts",
+		"wxt.config.ts",
+		".wxt/wxt.d.ts"
+	],
 	"references": [
 		{
 			"path": "../../packages/amagi-sync-client/tsconfig.json"
 		},
 		{
-			"path": "../../packages/amagi-browser-adapter-chromium/tsconfig.json"
+			"path": "../../packages/amagi-webext/tsconfig.json"
 		}
 	]
 }

@@ -10,14 +10,18 @@ use uuid::Uuid;
 use crate::{
     SyncError, SyncResult,
     model::{
-        AcceptedLocalMutationView, CursorAckRequest, CursorAckResponse, FeedRequest, FeedResponse,
-        LocalMutationInput, PreviewSummaryView, RegisterClientRequest, RegisterClientResponse,
-        ServerOpView, SyncApplyRequest, SyncApplyResponse, SyncConflictView, SyncPreviewRequest,
-        SyncPreviewResponse, SyncSessionStartRequest, SyncSessionStartResponse,
+        AcceptedLocalMutationView, CreateSyncProfileRequest, CreateSyncProfileRuleRequest,
+        CreateSyncProfileTargetRequest, CursorAckRequest, CursorAckResponse, FeedRequest,
+        FeedResponse, LocalMutationInput, PreviewSummaryView, RegisterClientRequest,
+        RegisterClientResponse, ServerOpView, SyncApplyRequest, SyncApplyResponse,
+        SyncConflictView, SyncPreviewRequest, SyncPreviewResponse, SyncProfileDetailView,
+        SyncSessionStartRequest, SyncSessionStartResponse, UpdateSyncProfileRequest,
+        UpdateSyncProfileRuleRequest,
     },
     repository::{
-        SyncRepository, browser_client_view, cursor_view, device_view, hash_json, library_view,
-        mapping_view, now, parse_uuid, profile_view, server_op_view, validate_local_mutations,
+        InsertPreviewParams, SyncRepository, browser_client_view, cursor_view, device_view,
+        hash_json, library_view, mapping_view, now, parse_uuid, profile_detail_view, profile_view,
+        server_op_view, validate_local_mutations,
     },
 };
 
@@ -88,7 +92,7 @@ impl SyncService {
                 SyncRepository::ensure_default_profile(&txn, owner_user_id).await?;
             let selected_profile = match request.preferred_profile_id.as_deref() {
                 Some(profile_id) => {
-                    SyncRepository::find_profile_for_owner(
+                    SyncRepository::find_enabled_profile_for_owner(
                         &txn,
                         owner_user_id,
                         parse_uuid(profile_id, "profile_id_invalid", "preferredProfileId")?,
@@ -98,7 +102,7 @@ impl SyncService {
                 None => default_profile.clone(),
             };
             let available_profiles =
-                SyncRepository::list_profiles_for_owner(&txn, owner_user_id).await?;
+                SyncRepository::list_enabled_profiles_for_owner(&txn, owner_user_id).await?;
             let libraries = SyncRepository::list_libraries_for_owner(&txn, owner_user_id).await?;
             let cursors =
                 SyncRepository::list_cursors_for_browser_client(&txn, browser_client_id).await?;
@@ -128,7 +132,204 @@ impl SyncService {
         }
         .await;
 
-        finish_read_txn(txn, result).await
+        finish_write_txn(txn, result).await
+    }
+
+    pub async fn list_profile_details(
+        &self,
+        owner_user_id: Uuid,
+    ) -> SyncResult<Vec<SyncProfileDetailView>> {
+        let txn = self.begin_owner_txn(owner_user_id).await?;
+        let result = async {
+            SyncRepository::ensure_default_profile(&txn, owner_user_id).await?;
+            let profiles = SyncRepository::list_profiles_for_owner(&txn, owner_user_id).await?;
+            let mut views = Vec::with_capacity(profiles.len());
+            for profile in profiles {
+                let rules = SyncRepository::list_profile_rules(&txn, profile.id).await?;
+                let targets = SyncRepository::list_profile_targets(&txn, profile.id).await?;
+                views.push(profile_detail_view(profile, rules, targets));
+            }
+            Ok(views)
+        }
+        .await;
+
+        finish_write_txn(txn, result).await
+    }
+
+    pub async fn create_profile(
+        &self,
+        owner_user_id: Uuid,
+        request: &CreateSyncProfileRequest,
+    ) -> SyncResult<SyncProfileDetailView> {
+        let txn = self.begin_owner_txn(owner_user_id).await?;
+        let result = async {
+            validate_profile_create_request(request)?;
+            let profile = SyncRepository::create_profile(&txn, owner_user_id, request).await?;
+            let rules = SyncRepository::list_profile_rules(&txn, profile.id).await?;
+            let targets = SyncRepository::list_profile_targets(&txn, profile.id).await?;
+            Ok(profile_detail_view(profile, rules, targets))
+        }
+        .await;
+
+        finish_write_txn(txn, result).await
+    }
+
+    pub async fn update_profile(
+        &self,
+        owner_user_id: Uuid,
+        profile_id: Uuid,
+        request: &UpdateSyncProfileRequest,
+    ) -> SyncResult<SyncProfileDetailView> {
+        let txn = self.begin_owner_txn(owner_user_id).await?;
+        let result = async {
+            validate_profile_update_request(request)?;
+            let profile =
+                SyncRepository::find_profile_for_owner(&txn, owner_user_id, profile_id).await?;
+            if matches!(request.enabled, Some(false))
+                && profile.mode == "manual"
+                && profile.enabled
+                && SyncRepository::count_enabled_manual_profiles(&txn, owner_user_id).await? <= 1
+            {
+                return Err(SyncError::LastEnabledManualProfile);
+            }
+            let profile = SyncRepository::update_profile(&txn, profile, request).await?;
+            if profile.mode == "manual" && profile.enabled {
+                SyncRepository::ensure_default_profile(&txn, owner_user_id).await?;
+            }
+            let rules = SyncRepository::list_profile_rules(&txn, profile.id).await?;
+            let targets = SyncRepository::list_profile_targets(&txn, profile.id).await?;
+            Ok(profile_detail_view(profile, rules, targets))
+        }
+        .await;
+
+        finish_write_txn(txn, result).await
+    }
+
+    pub async fn create_profile_target(
+        &self,
+        owner_user_id: Uuid,
+        profile_id: Uuid,
+        request: &CreateSyncProfileTargetRequest,
+    ) -> SyncResult<SyncProfileDetailView> {
+        let txn = self.begin_owner_txn(owner_user_id).await?;
+        let result = async {
+            let normalized_request = normalize_target_request(request)?;
+            let profile =
+                SyncRepository::find_profile_for_owner(&txn, owner_user_id, profile_id).await?;
+            if let Some(device_id) = normalized_request.device_id.as_deref() {
+                SyncRepository::find_device_for_owner(
+                    &txn,
+                    owner_user_id,
+                    parse_uuid(device_id, "device_id_invalid", "deviceId")?,
+                )
+                .await?;
+            }
+            if let Some(browser_client_id) = normalized_request.browser_client_id.as_deref() {
+                SyncRepository::find_browser_client_for_owner(
+                    &txn,
+                    owner_user_id,
+                    parse_uuid(
+                        browser_client_id,
+                        "browser_client_id_invalid",
+                        "browserClientId",
+                    )?,
+                )
+                .await?;
+            }
+            SyncRepository::create_profile_target(&txn, profile.id, &normalized_request).await?;
+            let rules = SyncRepository::list_profile_rules(&txn, profile.id).await?;
+            let targets = SyncRepository::list_profile_targets(&txn, profile.id).await?;
+            Ok(profile_detail_view(profile, rules, targets))
+        }
+        .await;
+
+        finish_write_txn(txn, result).await
+    }
+
+    pub async fn delete_profile_target(
+        &self,
+        owner_user_id: Uuid,
+        profile_id: Uuid,
+        target_id: Uuid,
+    ) -> SyncResult<SyncProfileDetailView> {
+        let txn = self.begin_owner_txn(owner_user_id).await?;
+        let result = async {
+            let profile =
+                SyncRepository::find_profile_for_owner(&txn, owner_user_id, profile_id).await?;
+            let target = SyncRepository::find_profile_target(&txn, profile.id, target_id).await?;
+            SyncRepository::delete_profile_target(&txn, target).await?;
+            let rules = SyncRepository::list_profile_rules(&txn, profile.id).await?;
+            let targets = SyncRepository::list_profile_targets(&txn, profile.id).await?;
+            Ok(profile_detail_view(profile, rules, targets))
+        }
+        .await;
+
+        finish_write_txn(txn, result).await
+    }
+
+    pub async fn create_profile_rule(
+        &self,
+        owner_user_id: Uuid,
+        profile_id: Uuid,
+        request: &CreateSyncProfileRuleRequest,
+    ) -> SyncResult<SyncProfileDetailView> {
+        let txn = self.begin_owner_txn(owner_user_id).await?;
+        let result = async {
+            let normalized_request = validate_profile_rule_create_request(request)?;
+            let profile =
+                SyncRepository::find_profile_for_owner(&txn, owner_user_id, profile_id).await?;
+            SyncRepository::create_profile_rule(&txn, profile.id, &normalized_request).await?;
+            let rules = SyncRepository::list_profile_rules(&txn, profile.id).await?;
+            let targets = SyncRepository::list_profile_targets(&txn, profile.id).await?;
+            Ok(profile_detail_view(profile, rules, targets))
+        }
+        .await;
+
+        finish_write_txn(txn, result).await
+    }
+
+    pub async fn update_profile_rule(
+        &self,
+        owner_user_id: Uuid,
+        profile_id: Uuid,
+        rule_id: Uuid,
+        request: &UpdateSyncProfileRuleRequest,
+    ) -> SyncResult<SyncProfileDetailView> {
+        let txn = self.begin_owner_txn(owner_user_id).await?;
+        let result = async {
+            let profile =
+                SyncRepository::find_profile_for_owner(&txn, owner_user_id, profile_id).await?;
+            let normalized_request = validate_profile_rule_update_request(request)?;
+            let rule = SyncRepository::find_profile_rule(&txn, profile.id, rule_id).await?;
+            SyncRepository::update_profile_rule(&txn, rule, &normalized_request).await?;
+            let rules = SyncRepository::list_profile_rules(&txn, profile.id).await?;
+            let targets = SyncRepository::list_profile_targets(&txn, profile.id).await?;
+            Ok(profile_detail_view(profile, rules, targets))
+        }
+        .await;
+
+        finish_write_txn(txn, result).await
+    }
+
+    pub async fn delete_profile_rule(
+        &self,
+        owner_user_id: Uuid,
+        profile_id: Uuid,
+        rule_id: Uuid,
+    ) -> SyncResult<SyncProfileDetailView> {
+        let txn = self.begin_owner_txn(owner_user_id).await?;
+        let result = async {
+            let profile =
+                SyncRepository::find_profile_for_owner(&txn, owner_user_id, profile_id).await?;
+            let rule = SyncRepository::find_profile_rule(&txn, profile.id, rule_id).await?;
+            SyncRepository::delete_profile_rule(&txn, rule).await?;
+            let rules = SyncRepository::list_profile_rules(&txn, profile.id).await?;
+            let targets = SyncRepository::list_profile_targets(&txn, profile.id).await?;
+            Ok(profile_detail_view(profile, rules, targets))
+        }
+        .await;
+
+        finish_write_txn(txn, result).await
     }
 
     pub async fn feed(
@@ -153,7 +354,8 @@ impl SyncService {
             }
             if let Some(profile_id) = request.profile_id.as_deref() {
                 let profile_id = parse_uuid(profile_id, "profile_id_invalid", "profileId")?;
-                SyncRepository::find_profile_for_owner(&txn, owner_user_id, profile_id).await?;
+                SyncRepository::find_enabled_profile_for_owner(&txn, owner_user_id, profile_id)
+                    .await?;
             }
 
             let current_clock = SyncRepository::library_head_clock(&txn, library_id).await?;
@@ -207,7 +409,7 @@ impl SyncService {
             let library_id = parse_uuid(&request.library_id, "library_id_invalid", "libraryId")?;
             SyncRepository::find_browser_client_for_owner(&txn, owner_user_id, browser_client_id)
                 .await?;
-            SyncRepository::find_profile_for_owner(&txn, owner_user_id, profile_id).await?;
+            SyncRepository::find_enabled_profile_for_owner(&txn, owner_user_id, profile_id).await?;
             let library =
                 SyncRepository::find_library_for_owner(&txn, owner_user_id, library_id).await?;
 
@@ -280,17 +482,19 @@ impl SyncService {
             };
             let preview = SyncRepository::insert_preview(
                 &txn,
-                owner_user_id,
-                browser_client_id,
-                library_id,
-                request.base_clock,
-                current_clock,
-                status,
-                hash_json(request),
-                &summary,
-                &server_ops,
-                &accepted_local_mutations,
-                &conflicts,
+                InsertPreviewParams {
+                    owner_user_id,
+                    browser_client_id,
+                    library_id,
+                    base_clock: request.base_clock,
+                    to_clock: current_clock,
+                    status,
+                    request_hash: hash_json(request),
+                    summary: &summary,
+                    server_ops: &server_ops,
+                    accepted_local_mutations: &accepted_local_mutations,
+                    conflicts: &conflicts,
+                },
             )
             .await?;
 
@@ -941,6 +1145,193 @@ fn conflict(conflict_type: &str, summary: &str, details: Value) -> SyncConflictV
         summary: summary.to_owned(),
         details,
     }
+}
+
+fn validate_profile_create_request(request: &CreateSyncProfileRequest) -> SyncResult<()> {
+    if request.name.trim().is_empty() {
+        return Err(SyncError::InvalidRequest {
+            code: "profile_name_required",
+            message: "name is required".to_owned(),
+        });
+    }
+    if request.mode.trim() != "manual" {
+        return Err(SyncError::InvalidRequest {
+            code: "invalid_profile_mode",
+            message: "Iter11 only allows mode=manual".to_owned(),
+        });
+    }
+    validate_default_direction(request.default_direction.trim())?;
+    validate_conflict_policy(request.conflict_policy.trim())?;
+    Ok(())
+}
+
+fn validate_profile_update_request(request: &UpdateSyncProfileRequest) -> SyncResult<()> {
+    if let Some(name) = &request.name
+        && name.trim().is_empty()
+    {
+        return Err(SyncError::InvalidRequest {
+            code: "profile_name_required",
+            message: "name is required".to_owned(),
+        });
+    }
+    if let Some(default_direction) = &request.default_direction {
+        validate_default_direction(default_direction.trim())?;
+    }
+    if let Some(conflict_policy) = &request.conflict_policy {
+        validate_conflict_policy(conflict_policy.trim())?;
+    }
+    Ok(())
+}
+
+fn validate_default_direction(default_direction: &str) -> SyncResult<()> {
+    if matches!(default_direction, "pull" | "push" | "bidirectional") {
+        Ok(())
+    } else {
+        Err(SyncError::InvalidRequest {
+            code: "invalid_default_direction",
+            message: "defaultDirection must be pull, push, or bidirectional".to_owned(),
+        })
+    }
+}
+
+fn validate_conflict_policy(conflict_policy: &str) -> SyncResult<()> {
+    if conflict_policy == "manual" {
+        Ok(())
+    } else {
+        Err(SyncError::InvalidRequest {
+            code: "invalid_conflict_policy",
+            message: "Iter11 only allows conflictPolicy=manual".to_owned(),
+        })
+    }
+}
+
+fn normalize_target_request(
+    request: &CreateSyncProfileTargetRequest,
+) -> SyncResult<CreateSyncProfileTargetRequest> {
+    let normalized_request = CreateSyncProfileTargetRequest {
+        platform: trim_optional(&request.platform),
+        device_type: trim_optional(&request.device_type),
+        device_id: trim_optional(&request.device_id),
+        browser_family: trim_optional(&request.browser_family),
+        browser_client_id: trim_optional(&request.browser_client_id),
+    };
+    if normalized_request.platform.is_none()
+        && normalized_request.device_type.is_none()
+        && normalized_request.device_id.is_none()
+        && normalized_request.browser_family.is_none()
+        && normalized_request.browser_client_id.is_none()
+    {
+        return Err(SyncError::InvalidRequest {
+            code: "target_selector_required",
+            message: "at least one target selector field is required".to_owned(),
+        });
+    }
+    Ok(normalized_request)
+}
+
+fn validate_profile_rule_create_request(
+    request: &CreateSyncProfileRuleRequest,
+) -> SyncResult<CreateSyncProfileRuleRequest> {
+    validate_rule_action(request.action.trim())?;
+    validate_rule_matcher(request.matcher_type.trim(), request.matcher_value.trim())?;
+    Ok(CreateSyncProfileRuleRequest {
+        rule_order: request.rule_order,
+        action: request.action.trim().to_owned(),
+        matcher_type: request.matcher_type.trim().to_owned(),
+        matcher_value: request.matcher_value.trim().to_owned(),
+        options: request.options.clone(),
+    })
+}
+
+fn validate_profile_rule_update_request(
+    request: &UpdateSyncProfileRuleRequest,
+) -> SyncResult<UpdateSyncProfileRuleRequest> {
+    let action = request.action.as_ref().map(|value| value.trim().to_owned());
+    if let Some(action) = &action {
+        validate_rule_action(action)?;
+    }
+    let matcher_type = request
+        .matcher_type
+        .as_ref()
+        .map(|value| value.trim().to_owned());
+    let matcher_value = request
+        .matcher_value
+        .as_ref()
+        .map(|value| value.trim().to_owned());
+    match (matcher_type.as_deref(), matcher_value.as_deref()) {
+        (Some(matcher_type), Some(matcher_value)) => {
+            validate_rule_matcher(matcher_type, matcher_value)?;
+        }
+        (Some(_), None) | (None, Some(_)) => {
+            return Err(SyncError::InvalidRequest {
+                code: "rule_matcher_update_incomplete",
+                message: "matcherType and matcherValue must be updated together".to_owned(),
+            });
+        }
+        (None, None) => {}
+    }
+    Ok(UpdateSyncProfileRuleRequest {
+        rule_order: request.rule_order,
+        action,
+        matcher_type,
+        matcher_value,
+        options: request.options.clone(),
+    })
+}
+
+fn validate_rule_action(action: &str) -> SyncResult<()> {
+    if matches!(action, "include" | "exclude" | "readonly") {
+        Ok(())
+    } else {
+        Err(SyncError::InvalidRequest {
+            code: "invalid_rule_action",
+            message: "action must be include, exclude, or readonly".to_owned(),
+        })
+    }
+}
+
+fn validate_rule_matcher(matcher_type: &str, matcher_value: &str) -> SyncResult<()> {
+    match matcher_type {
+        "library_kind" => {
+            if matches!(matcher_value, "normal" | "vault") {
+                Ok(())
+            } else {
+                Err(SyncError::InvalidRequest {
+                    code: "invalid_library_kind",
+                    message: "library_kind matcherValue must be normal or vault".to_owned(),
+                })
+            }
+        }
+        "folder_id" => {
+            Uuid::parse_str(matcher_value).map_err(|_| SyncError::InvalidRequest {
+                code: "folder_id_invalid",
+                message: "folder_id matcherValue must be a UUID".to_owned(),
+            })?;
+            Ok(())
+        }
+        "folder_path" | "tag" => {
+            if matcher_value.is_empty() {
+                Err(SyncError::InvalidRequest {
+                    code: "matcher_value_required",
+                    message: "matcherValue must be non-empty".to_owned(),
+                })
+            } else {
+                Ok(())
+            }
+        }
+        _ => Err(SyncError::InvalidRequest {
+            code: "invalid_matcher_type",
+            message: "matcherType must be library_kind, folder_id, folder_path, or tag".to_owned(),
+        }),
+    }
+}
+
+fn trim_optional(value: &Option<String>) -> Option<String> {
+    value
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
 }
 
 fn parse_apply_result(summary_json: Value) -> SyncResult<SyncApplyResponse> {

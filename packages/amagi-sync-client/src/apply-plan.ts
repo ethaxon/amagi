@@ -4,11 +4,13 @@ import type {
 	NodeClientMappingView,
 	ServerOpView,
 } from "./types";
+import { LocalNodeType as LocalNodeTypeDomain } from "./types";
 
 export type LocalApplyOp =
 	| {
 			kind: "create";
 			phase: 1;
+			serverNodeId: string;
 			clientExternalId: string;
 			parentClientExternalId: string | null;
 			nodeType: LocalNodeType;
@@ -93,6 +95,7 @@ function toLocalApplyOp(
 			return {
 				kind: "create",
 				phase: 1,
+				serverNodeId: serverOp.nodeId,
 				clientExternalId,
 				parentClientExternalId,
 				nodeType,
@@ -130,7 +133,11 @@ function toLocalApplyOp(
 }
 
 function readNodeType(value: unknown): LocalNodeType {
-	if (value === "folder" || value === "bookmark" || value === "separator") {
+	if (
+		value === LocalNodeTypeDomain.Folder ||
+		value === LocalNodeTypeDomain.Bookmark ||
+		value === LocalNodeTypeDomain.Separator
+	) {
 		return value;
 	}
 	throw new SyncClientError("server op payload is missing a valid nodeType");

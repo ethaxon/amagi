@@ -6,9 +6,11 @@ import { createEmptySyncState, type SyncStorage } from "./storage";
 import type {
 	AmagiSyncApi,
 	CursorSummaryView,
+	ManualSyncStatus,
 	RegisterClientRequest,
 	SyncPreviewResponse,
 } from "./types";
+import { ManualSyncStatus as ManualSyncStatusDomain } from "./types";
 
 export interface ManualSyncAuthContext {
 	deviceName: string;
@@ -29,11 +31,7 @@ export interface RunManualSyncOptions {
 }
 
 export interface ManualSyncResult {
-	status:
-		| "synced"
-		| "needs-user-resolution"
-		| "awaiting-confirmation"
-		| "recovery-required";
+	status: ManualSyncStatus;
 	libraryId: string;
 	preview: SyncPreviewResponse;
 	newClock: number | null;
@@ -129,7 +127,7 @@ export async function runManualSync(
 				needsUserResolution: true,
 			},
 			lastSyncStatus: {
-				state: "needs-user-resolution",
+				state: ManualSyncStatusDomain.NeedsUserResolution,
 				libraryId: selectedLibrary.id,
 				updatedAt: now().toISOString(),
 				message: `${preview.conflicts.length} conflict(s) require resolution`,
@@ -137,7 +135,7 @@ export async function runManualSync(
 		};
 		await options.storage.saveState(state);
 		return {
-			status: "needs-user-resolution",
+			status: ManualSyncStatusDomain.NeedsUserResolution,
 			libraryId: selectedLibrary.id,
 			preview,
 			newClock: null,
@@ -156,7 +154,7 @@ export async function runManualSync(
 				needsUserResolution: false,
 			},
 			lastSyncStatus: {
-				state: "awaiting-confirmation",
+				state: ManualSyncStatusDomain.AwaitingConfirmation,
 				libraryId: selectedLibrary.id,
 				updatedAt: now().toISOString(),
 				message: "preview stored and awaiting explicit apply confirmation",
@@ -164,7 +162,7 @@ export async function runManualSync(
 		};
 		await options.storage.saveState(state);
 		return {
-			status: "awaiting-confirmation",
+			status: ManualSyncStatusDomain.AwaitingConfirmation,
 			libraryId: selectedLibrary.id,
 			preview,
 			newClock: null,
@@ -189,9 +187,20 @@ export async function runManualSync(
 		mappingsByClientExternalId: mergedMappings,
 		createdMappings: applyResult.createdMappings,
 	});
+	const localApplyResultPromise =
+		options.adapter.applyLocalPlan(localApplyPlan);
 
 	try {
-		await options.adapter.applyLocalPlan(localApplyPlan);
+		const localApplyResult = await localApplyResultPromise;
+		Object.assign(
+			mergedMappings,
+			Object.fromEntries(
+				localApplyResult.createdMappings.map((mapping) => [
+					mapping.clientExternalId,
+					mapping.serverNodeId,
+				]),
+			),
+		);
 	} catch (error) {
 		state = {
 			...state,
@@ -206,7 +215,7 @@ export async function runManualSync(
 				conflicts: applyResult.conflicts,
 			},
 			lastSyncStatus: {
-				state: "recovery-required",
+				state: ManualSyncStatusDomain.RecoveryRequired,
 				libraryId: selectedLibrary.id,
 				updatedAt: now().toISOString(),
 				message: "server apply succeeded but local adapter apply failed",
@@ -214,7 +223,7 @@ export async function runManualSync(
 		};
 		await options.storage.saveState(state);
 		return {
-			status: "recovery-required",
+			status: ManualSyncStatusDomain.RecoveryRequired,
 			libraryId: selectedLibrary.id,
 			preview,
 			newClock: applyResult.newClock,
@@ -244,7 +253,7 @@ export async function runManualSync(
 		pendingPreview: null,
 		pendingRecovery: null,
 		lastSyncStatus: {
-			state: "synced",
+			state: ManualSyncStatusDomain.Synced,
 			libraryId: selectedLibrary.id,
 			updatedAt: now().toISOString(),
 			message: "manual sync completed successfully",
@@ -252,7 +261,7 @@ export async function runManualSync(
 	};
 	await options.storage.saveState(state);
 	return {
-		status: "synced",
+		status: ManualSyncStatusDomain.Synced,
 		libraryId: selectedLibrary.id,
 		preview,
 		newClock: applyResult.newClock,

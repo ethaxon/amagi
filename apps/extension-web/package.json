@@ -3,14 +3,31 @@
 	"version": "0.0.1",
 	"type": "module",
 	"dependencies": {
-		"@ethaxon/amagi-browser-adapter-chromium": "workspace:*",
+		"@ethaxon/amagi-auth-client": "workspace:*",
 		"@ethaxon/amagi-sync-client": "workspace:*",
+		"@ethaxon/amagi-webext": "workspace:*",
 		"react": "^19.2.5",
 		"react-dom": "^19.2.5"
 	},
 	"scripts": {
-		"build": "vite build",
-		"dev": "vite dev",
+		"postinstall": "wxt prepare",
+		"dev:chrome": "wxt -b chrome --mv3",
+		"dev:firefox": "wxt -b firefox --mv3",
+		"dev:safari": "wxt -b safari",
+		"build": "pnpm run build:chrome && pnpm run build:firefox",
+		"build:chrome": "wxt build -b chrome --mv3",
+		"build:firefox": "wxt build -b firefox --mv3",
+		"build:safari": "wxt build -b safari",
+		"manifest:smoke:chrome": "node ./scripts/manifest-smoke.mjs chrome",
+		"manifest:smoke:firefox": "node ./scripts/manifest-smoke.mjs firefox",
+		"manifest:smoke:safari": "node ./scripts/manifest-smoke.mjs safari",
+		"smoke:chrome": "node ./scripts/chrome-extension-smoke.mjs",
 		"typecheck": "tsc -b --force"
+	},
+	"devDependencies": {
+		"@wxt-dev/auto-icons": "^1.1.1",
+		"@wxt-dev/module-react": "^1.2.2",
+		"playwright": "^1.59.1",
+		"wxt": "^0.20.25"
 	}
 }

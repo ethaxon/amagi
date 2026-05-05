@@ -21,6 +21,7 @@ amagi-db-migration = { path = "packages/amagi-db-migration" }
 amagi-bookmarks = { path = "packages/amagi-bookmarks" }
 amagi-securitydept = { path = "packages/amagi-securitydept" }
 amagi-test-utils = { path = "packages/amagi-test-utils" }
+clap = { version = "4.5", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 axum = { version = "0.8", features = ["macros"] }
@@ -44,6 +45,7 @@ testcontainers = "0.27.3"
 testcontainers-modules = "0.15.0"
 rstest = "0.26.1"
 tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["cors"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 sea-orm = { version = "2.0.0-rc.38", features = [

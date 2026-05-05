@@ -2,9 +2,15 @@
 	"name": "@ethaxon/amagi-dashboard-web",
 	"version": "0.0.1",
 	"type": "module",
+	"dependencies": {
+		"@ethaxon/amagi-auth-client": "workspace:*",
+		"react": "^19.2.5",
+		"react-dom": "^19.2.5"
+	},
 	"scripts": {
-		"build": "shx echo \"dashboard-web build placeholder\"",
-		"dev": "shx echo \"dashboard-web dev placeholder\"",
+		"build": "vite build",
+		"dev": "vite dev",
+		"test": "vitest run --root ../../ --config vitest.config.ts apps/dashboard-web/src/__tests__",
 		"typecheck": "tsc -b --force"
 	}
 }

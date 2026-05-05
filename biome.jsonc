@@ -40,6 +40,8 @@
 		"ignoreUnknown": false,
 		"includes": [
 			"**",
+			"!**/.wxt",
+			"!**/.output",
 			"!**/dist",
 			"!**/dist-tsc",
 			"!webui",

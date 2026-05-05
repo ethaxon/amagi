@@ -38,6 +38,7 @@ Start with `docs/zh/000-OVERVIEW.md`, then read the topic documents relevant to 
 
 - Use `just` for repository workflows such as setup, lint, test, typecheck, build, and dev dependencies.
 - Commands in project recipes should stay idiomatic and user-facing. Do not add `mise exec` to recipes only because an agent's non-interactive shell missed the user's shell initialization.
+- Unless a command explicitly depends on a platform-specific prerequisite, commands in recipes, docs, and examples must remain cross-platform across macOS, Linux, and Windows. Prefer CLI flags or config files over inline `KEY=value command` shell syntax.
 - When this agent shell cannot find `pnpm`, `node`, `cargo`, or another `mise`-managed tool, run the command through the agent environment wrapper, for example:
 
 ```sh
@@ -51,7 +52,8 @@ mise exec --command "pnpm lint"
 
 - Comments explain why, not what.
 - Keep boundaries clear: app crates/apps are thin composition layers; reusable logic belongs in `packages/*`.
-- TypeScript public APIs should follow the coding standards in `docs/zh/009-REPOSITORY-AND-DELIVERY.md`, including `as const` enum-like domains and options-object-first public API shape.
+- TypeScript public APIs should follow the coding standards in `docs/zh/009-REPOSITORY-AND-DELIVERY.md`, including options-object-first public API shape.
+- For enum-like string domains, use `export const Foo = { ... } as const` + `export type Foo = (typeof Foo)[keyof typeof Foo]` as the canonical source of truth. Do not use `['a', 'b'] as const` + `[number]` as the primary domain definition. If stable iteration order is needed for UI or tests, derive a separate ordered array from the object const.
 - Bash scripts should use `set -e`, `[[ ]]`, and quoted variables.
 - YAML uses 2-space indentation and quotes only when necessary.
 
@@ -82,7 +84,7 @@ A task is complete only when:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **amagi** (3188 symbols, 6369 relationships, 275 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **amagi** (3657 symbols, 7439 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
