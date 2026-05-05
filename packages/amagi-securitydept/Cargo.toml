@@ -1,0 +1,16 @@
+[package]
+name = "amagi-securitydept"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+amagi-config = { workspace = true }
+securitydept-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+url = "2"
+
+[dev-dependencies]
+amagi-test-utils = { workspace = true }
+reqwest = { workspace = true }

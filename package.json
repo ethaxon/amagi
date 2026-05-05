@@ -1,37 +1,46 @@
 {
-    "name": "@ethaxon/amagi",
-    "version": "0.0.1",
-    "private": true,
-    "type": "module",
-    "description": "Amagi is a self-hosted bookmark control plane.",
-    "keywords": [
-        "bookmark",
-        "control plane",
-        "self-hosted",
-        "sync",
-        "policy-driven",
-        "device/browser-specific projection",
-        "private vault",
-        "manual sync first"
-    ],
-    "workspaces": [
-        "apps/dashboard-web",
-        "apps/extension-web",
-        "packages/sync-client"
-    ],
-    "license": "MPL-2.0",
-    "author": "Zhou Yeheng <root@aitiotekt.com>",
-    "packageManager": "pnpm@10.29.3",
-    "scripts": {
-        "prepare": "prek install",
-        "lint": "biome check",
-        "lint-fix": "biome check --write"
-    },
-    "devDependencies": {
-        "@biomejs/biome": "2.4.2",
-        "@j178/prek": "^0.3.2",
-        "@types/node": "^25.2.3",
-        "shx": "^0.4.0",
-        "typescript": "^5.9.3"
-    }
+	"name": "@ethaxon/amagi",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"description": "Amagi is a self-hosted bookmark control plane.",
+	"keywords": [
+		"bookmark",
+		"control plane",
+		"self-hosted",
+		"sync",
+		"policy-driven",
+		"device/browser-specific projection",
+		"private vault",
+		"manual sync first"
+	],
+	"license": "MPL-2.0",
+	"author": "Zhou Yeheng <root@aitiotekt.com>",
+	"packageManager": "pnpm@11.0.3",
+	"engines": {
+		"node": ">=24.4.0"
+	},
+	"scripts": {
+		"prepare": "prek install",
+		"lint": "biome check",
+		"lint-fix": "biome check --write",
+		"typecheck": "tsc -b --force",
+		"test": "vitest run --root . --config vitest.config.ts"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.14",
+		"@j178/prek": "^0.3.11",
+		"@tailwindcss/vite": "^4.2.4",
+		"@types/node": "^25.6.0",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^6.0.1",
+		"react": "^19.2.5",
+		"react-dom": "^19.2.5",
+		"shx": "^0.4.0",
+		"tsdown": "^0.21.10",
+		"typescript": "^6.0.3",
+		"vite": "^8.0.10",
+		"vitest": "^4.1.5"
+	}
 }

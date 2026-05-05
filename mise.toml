@@ -1,4 +1,6 @@
 [tools]
 node = "24"
-pnpm = "latest"
+pnpm = "11.0.3"
 rust = "nightly"
+watchexec = "latest"
+zellij = "latest"

@@ -1,0 +1,12 @@
+[package]
+name = "amagi-test-utils"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+reqwest = { workspace = true }
+testcontainers = { workspace = true }
+testcontainers-modules = { workspace = true, features = ["dex", "postgres"] }
+
+[dev-dependencies]
+rstest = { workspace = true }

@@ -1,0 +1,13 @@
+[package]
+name = "amagi-db-migration"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+name = "amagi_db_migration"
+path = "src/lib.rs"
+
+[dependencies]
+sea-orm-migration = { workspace = true }
+tokio = { workspace = true }

@@ -1,0 +1,40 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "test amagi-config",
+			"type": "shell",
+			"command": "cargo",
+			"args": ["test", "-p", "amagi-config"],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "retest amagi-config",
+			"type": "shell",
+			"command": "cargo",
+			"args": ["test", "-p", "amagi-config"],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "iter5 review1 fix sweep",
+			"type": "shell",
+			"command": "cargo test -p amagi-config && cargo test -p amagi-securitydept --all-features && cargo test -p amagi-auth --all-features && cargo test -p amagi-api-server --all-features",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "retest amagi-auth integration layout",
+			"type": "shell",
+			"command": "cargo",
+			"args": ["test", "-p", "amagi-auth", "--all-features"],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}

@@ -1,0 +1,1230 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "ApiServerConfigInput",
+	"type": "object",
+	"properties": {
+		"server": {
+			"$ref": "#/$defs/ServerConfig",
+			"default": {
+				"host": "127.0.0.1",
+				"port": 7800
+			}
+		},
+		"external_base_url": {
+			"type": ["string", "null"],
+			"default": null
+		},
+		"default_oidc_source": {
+			"type": ["string", "null"],
+			"default": null
+		},
+		"oidc_sources": {
+			"type": "object",
+			"additionalProperties": {
+				"$ref": "#/$defs/OidcSourceConfig"
+			}
+		},
+		"token_set": {
+			"$ref": "#/$defs/TokenSetConfig",
+			"default": {
+				"facade_paths": {
+					"start": "/api/auth/token-set/oidc/source/{source}/start",
+					"callback": "/api/auth/token-set/oidc/source/{source}/callback"
+				},
+				"storage_policy": {
+					"pending_state_store": "server-moka",
+					"refresh_token_material": "sealed"
+				},
+				"browser_client_binding_required": true,
+				"cookie_session_dashboard_only": true
+			}
+		},
+		"database": {
+			"$ref": "#/$defs/DatabaseConfig",
+			"default": {
+				"url": null,
+				"auto_migrate": false
+			}
+		}
+	},
+	"additionalProperties": false,
+	"$defs": {
+		"ServerConfig": {
+			"type": "object",
+			"properties": {
+				"host": {
+					"type": "string",
+					"default": "127.0.0.1"
+				},
+				"port": {
+					"type": "integer",
+					"format": "uint16",
+					"minimum": 0,
+					"maximum": 65535,
+					"default": 7800
+				}
+			},
+			"additionalProperties": false
+		},
+		"OidcSourceConfig": {
+			"type": "object",
+			"properties": {
+				"oidc": {
+					"$ref": "#/$defs/TokenSetOidcSharedIntersectionConfig"
+				},
+				"backend_oidc": {
+					"$ref": "#/$defs/BackendOidcModeOverrideConfig"
+				},
+				"frontend_oidc": {
+					"$ref": "#/$defs/FrontendOidcModeOverrideConfig"
+				},
+				"access_token_substrate": {
+					"$ref": "#/$defs/AccessTokenSubstrateConfig"
+				},
+				"oidc_identity_claim": {
+					"$ref": "#/$defs/OidcIdentityClaimConfig",
+					"default": {
+						"type": "sub"
+					}
+				}
+			},
+			"additionalProperties": false
+		},
+		"TokenSetOidcSharedIntersectionConfig": {
+			"description": "Shared provider connectivity settings used by both OIDC clients and\nresource-server verifiers.",
+			"type": "object",
+			"properties": {
+				"client_id": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"client_secret": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/SecretString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"well_known_url": {
+					"description": "OpenID Connect discovery document URL.\n\nWhen set, the runtime fetches remote metadata and periodically refreshes\nit when `metadata_refresh_interval > 0`.",
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"issuer_url": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"jwks_uri": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"metadata_refresh_interval": {
+					"description": "Refresh interval for the discovery metadata cache.\n\nSet to `0` to disable periodic discovery refresh.",
+					"type": "string",
+					"default": "0s"
+				},
+				"jwks_refresh_interval": {
+					"description": "Refresh interval for the remote JWKS cache.\n\nSet to `0` to disable time-based JWKS refresh.",
+					"type": "string",
+					"default": "5m"
+				},
+				"authorization_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"token_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"userinfo_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"introspection_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"revocation_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"device_authorization_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"token_endpoint_auth_methods_supported": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"id_token_signing_alg_values_supported": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"userinfo_signing_alg_values_supported": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"scopes": {
+					"$ref": "#/$defs/StringOrVecString",
+					"default": "\"openid\" \"profile\" \"email\""
+				},
+				"required_scopes": {
+					"$ref": "#/$defs/StringOrVecString",
+					"default": ""
+				},
+				"claims_check_script": {
+					"type": ["string", "null"],
+					"default": null
+				},
+				"pkce_enabled": {
+					"type": "boolean",
+					"default": false
+				},
+				"redirect_url": {
+					"type": ["string", "null"],
+					"default": null
+				},
+				"device_poll_interval": {
+					"type": "string",
+					"default": "5s"
+				}
+			}
+		},
+		"SecretString": {
+			"description": "Secret-bearing string wrapper that redacts debug/serialization output.",
+			"type": "string",
+			"format": "password",
+			"writeOnly": true
+		},
+		"StringOrVecString": {
+			"anyOf": [
+				{
+					"type": "string"
+				},
+				{
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			]
+		},
+		"BackendOidcModeOverrideConfig": {
+			"type": "object",
+			"properties": {
+				"client_id": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"client_secret": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/SecretString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"well_known_url": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"issuer_url": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"jwks_uri": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"metadata_refresh_interval": {
+					"type": ["string", "null"],
+					"default": null
+				},
+				"jwks_refresh_interval": {
+					"type": ["string", "null"],
+					"default": null
+				},
+				"authorization_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"token_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"userinfo_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"introspection_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"revocation_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"device_authorization_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"token_endpoint_auth_methods_supported": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"id_token_signing_alg_values_supported": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"userinfo_signing_alg_values_supported": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"scopes": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"required_scopes": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"claims_check_script": {
+					"type": ["string", "null"],
+					"default": null
+				},
+				"pkce_enabled": {
+					"type": ["boolean", "null"],
+					"default": null
+				},
+				"redirect_url": {
+					"type": ["string", "null"],
+					"default": null
+				},
+				"device_poll_interval": {
+					"type": ["string", "null"],
+					"default": null
+				},
+				"pending_store": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/MokaPendingOauthStoreConfig"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"refresh_material_protection": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/RefreshMaterialProtection"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"metadata_delivery": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/MetadataDelivery"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"post_auth_redirect": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/PostAuthRedirectPolicy"
+						},
+						{
+							"type": "null"
+						}
+					]
+				}
+			}
+		},
+		"MokaPendingOauthStoreConfig": {
+			"description": "Configuration for PendingOauthStore.",
+			"type": "object",
+			"properties": {
+				"ttl": {
+					"description": "Time-to-live for pending OAuth entries.",
+					"type": "string",
+					"default": "5m"
+				},
+				"max_capacity": {
+					"description": "Maximum number of entries in the cache.",
+					"type": "integer",
+					"format": "uint64",
+					"minimum": 0,
+					"default": 1000
+				}
+			}
+		},
+		"RefreshMaterialProtection": {
+			"description": "How refresh tokens are stored / transmitted between server and client.\n\n`Sealed` carries the `master_key` instead of scattering it as a sibling\nfield — the type system guarantees the key is present when sealing is\nenabled.",
+			"oneOf": [
+				{
+					"description": "Refresh tokens are passed through without server-side sealing.",
+					"type": "object",
+					"properties": {
+						"kind": {
+							"type": "string",
+							"const": "passthrough"
+						}
+					},
+					"required": ["kind"]
+				},
+				{
+					"description": "Refresh tokens are sealed (AEAD-encrypted) by the server.",
+					"type": "object",
+					"properties": {
+						"master_key": {
+							"description": "The AEAD master key used for sealing and unsealing.",
+							"$ref": "#/$defs/SecretString"
+						},
+						"kind": {
+							"type": "string",
+							"const": "sealed"
+						}
+					},
+					"required": ["kind", "master_key"]
+				}
+			]
+		},
+		"MetadataDelivery": {
+			"description": "How auth-state metadata (principal, source) is delivered to the client.\n\n`Redemption` carries the store configuration, eliminating the need for a\nseparate config field.",
+			"oneOf": [
+				{
+					"description": "No server-side metadata delivery — the client extracts what it needs\nfrom the token set itself.",
+					"type": "object",
+					"properties": {
+						"kind": {
+							"type": "string",
+							"const": "none"
+						}
+					},
+					"required": ["kind"]
+				},
+				{
+					"description": "Metadata is stored server-side and redeemed by the client via a\none-time redemption id included in the callback/refresh fragment.",
+					"type": "object",
+					"properties": {
+						"ttl": {
+							"type": "string",
+							"default": "1m"
+						},
+						"max_capacity": {
+							"type": "integer",
+							"format": "uint64",
+							"minimum": 0,
+							"default": 1000
+						},
+						"kind": {
+							"type": "string",
+							"const": "redemption"
+						}
+					},
+					"required": ["kind"]
+				}
+			]
+		},
+		"PostAuthRedirectPolicy": {
+			"description": "Who validates the `post_auth_redirect_uri` after callback / refresh.\n\n`Resolved` carries the redirect policy configuration, ensuring the\nallowlist config is always present when the resolved policy is selected.",
+			"oneOf": [
+				{
+					"description": "The caller (route / app glue) is responsible for supplying and\nvalidating the redirect URI. The service applies no policy.",
+					"type": "object",
+					"properties": {
+						"kind": {
+							"type": "string",
+							"const": "caller_validated"
+						}
+					},
+					"required": ["kind"]
+				},
+				{
+					"description": "The service resolves and validates the redirect URI against an\nallowlist / policy configuration owned by the runtime.",
+					"type": "object",
+					"properties": {
+						"default_redirect_target": {
+							"type": ["string", "null"],
+							"default": null
+						},
+						"dynamic_redirect_target_enabled": {
+							"type": "boolean",
+							"default": false
+						},
+						"allowed_redirect_targets": {
+							"type": "array",
+							"items": {
+								"$ref": "#/$defs/RedirectTargetRule"
+							},
+							"default": []
+						},
+						"kind": {
+							"type": "string",
+							"const": "resolved"
+						}
+					},
+					"required": ["kind"]
+				}
+			]
+		},
+		"RedirectTargetRule": {
+			"oneOf": [
+				{
+					"type": "object",
+					"properties": {
+						"type": {
+							"type": "string",
+							"const": "regex"
+						},
+						"value": {
+							"type": "object",
+							"properties": {
+								"value": {
+									"type": "string"
+								}
+							},
+							"required": ["value"]
+						}
+					},
+					"required": ["type", "value"]
+				},
+				{
+					"type": "object",
+					"properties": {
+						"type": {
+							"type": "string",
+							"const": "all"
+						}
+					},
+					"required": ["type"]
+				},
+				{
+					"type": "object",
+					"properties": {
+						"type": {
+							"type": "string",
+							"const": "strict"
+						},
+						"value": {
+							"type": "object",
+							"properties": {
+								"value": {
+									"type": "string"
+								}
+							},
+							"required": ["value"]
+						}
+					},
+					"required": ["type", "value"]
+				}
+			]
+		},
+		"FrontendOidcModeOverrideConfig": {
+			"type": "object",
+			"properties": {
+				"client_id": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"client_secret": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/SecretString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"well_known_url": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"issuer_url": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"jwks_uri": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"metadata_refresh_interval": {
+					"type": ["string", "null"],
+					"default": null
+				},
+				"jwks_refresh_interval": {
+					"type": ["string", "null"],
+					"default": null
+				},
+				"authorization_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"token_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"userinfo_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"introspection_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"revocation_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"device_authorization_endpoint": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"token_endpoint_auth_methods_supported": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"id_token_signing_alg_values_supported": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"userinfo_signing_alg_values_supported": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"scopes": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"required_scopes": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/StringOrVecString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"claims_check_script": {
+					"type": ["string", "null"],
+					"default": null
+				},
+				"pkce_enabled": {
+					"type": ["boolean", "null"],
+					"default": null
+				},
+				"redirect_url": {
+					"type": ["string", "null"],
+					"default": null
+				},
+				"device_poll_interval": {
+					"type": ["string", "null"],
+					"default": null
+				},
+				"unsafe_frontend_client_secret": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/UnsafeFrontendClientSecret"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				}
+			}
+		},
+		"UnsafeFrontendClientSecret": {
+			"description": "When enabled, the backend includes `client_secret` in the\n[`FrontendOidcModeConfigProjection`](super::contracts::FrontendOidcModeConfigProjection)\nserved to the browser.\n\n# Security implications\n\nOAuth 2.0 public clients (browsers, SPAs) are **not** meant to hold\nsecrets. Exposing `client_secret` to the frontend:\n\n- negates the confidentiality of the credential\n- allows any user to impersonate the RP\n- violates RFC 6749 §2.1 / RFC 8252\n\nThis capability exists **only** as a compatibility escape hatch for\nbroken or misconfigured OIDC providers that refuse public-client\nregistrations.\n\nWhen enabled, both the server (at startup) and the frontend client (at\ninitialisation) should emit a prominent warning.",
+			"oneOf": [
+				{
+					"description": "Client secret is **not** exposed to the frontend (default, safe).",
+					"type": "string",
+					"const": "disabled"
+				},
+				{
+					"description": "Client secret **is** included in the config projection.\n\n⚠️ This is **unsafe**. Use only when the OIDC provider cannot be\nconfigured for public-client flows.",
+					"type": "string",
+					"const": "enabled"
+				}
+			]
+		},
+		"AccessTokenSubstrateConfig": {
+			"description": "Unified configuration for the access-token substrate layer.\n\nThis struct owns the configuration for all cross-mode substrate concerns:\nresource-server verification and token propagation policy.\n\n`resource_server` is optional at parse time — when absent it defaults to\nunconfigured. Call\n[`resolve_all`](AccessTokenSubstrateConfigSource::resolve_all) with the OIDC\nshared defaults to produce a [`ResolvedAccessTokenSubstrateConfig`].",
+			"type": "object",
+			"properties": {
+				"well_known_url": {
+					"description": "OpenID Connect discovery document URL.\n\nWhen set, the runtime fetches remote metadata and periodically refreshes\nit when `metadata_refresh_interval > 0`.",
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"issuer_url": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"jwks_uri": {
+					"type": ["string", "null"],
+					"default": ""
+				},
+				"metadata_refresh_interval": {
+					"description": "Refresh interval for the discovery metadata cache.\n\nSet to `0` to disable periodic discovery refresh.",
+					"type": "string",
+					"default": "0s"
+				},
+				"jwks_refresh_interval": {
+					"description": "Refresh interval for the remote JWKS cache.\n\nSet to `0` to disable time-based JWKS refresh.",
+					"type": "string",
+					"default": "5m"
+				},
+				"audiences": {
+					"description": "Accepted `aud` values. Empty means audience validation is disabled.",
+					"$ref": "#/$defs/StringOrVecString",
+					"default": ""
+				},
+				"required_scopes": {
+					"description": "Required scopes. Empty means no scope requirement is enforced.",
+					"$ref": "#/$defs/StringOrVecString",
+					"default": ""
+				},
+				"clock_skew": {
+					"description": "Allowed clock skew when validating `exp` and `nbf`.",
+					"type": "string",
+					"default": "1m"
+				},
+				"introspection": {
+					"description": "Optional opaque-token introspection configuration.\n\nExample TOML:\n```toml\n[oauth_resource_server]\nwell_known_url = \"https://issuer.example.com/.well-known/openid-configuration\"\naudiences = [\"api://securitydept\"]\nrequired_scopes = [\"entries.read\", \"entries.write\"]\n\n[oauth_resource_server.introspection]\nclient_id = \"resource-server\"\nclient_secret = \"secret\"\ntoken_type_hint = \"access_token\"\n# optional override:\n# introspection_url = \"https://issuer.example.com/oauth2/introspect\"\n```",
+					"anyOf": [
+						{
+							"$ref": "#/$defs/OAuthResourceServerIntrospectionConfig"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"token_propagation": {
+					"description": "Token propagation capability axis.",
+					"$ref": "#/$defs/TokenPropagation"
+				}
+			}
+		},
+		"OAuthResourceServerIntrospectionConfig": {
+			"type": "object",
+			"properties": {
+				"introspection_url": {
+					"description": "Optional override for the RFC 7662 introspection endpoint.\n\nWhen omitted, the endpoint is read from discovery if available.",
+					"type": ["string", "null"],
+					"default": null
+				},
+				"client_id": {
+					"description": "OAuth client_id used when calling the introspection endpoint.",
+					"type": ["string", "null"],
+					"default": null
+				},
+				"client_secret": {
+					"description": "OAuth client_secret used when calling the introspection endpoint.",
+					"anyOf": [
+						{
+							"$ref": "#/$defs/SecretString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"token_type_hint": {
+					"description": "Optional token type hint sent to the introspection endpoint.\n\nTypical values are `access_token` or `refresh_token`.",
+					"type": ["string", "null"],
+					"default": null
+				}
+			}
+		},
+		"TokenPropagation": {
+			"description": "Whether and how access tokens may be propagated to downstream services.\n\n`Enabled` carries the `TokenPropagatorConfig`, ensuring propagation policy\nconfiguration is always present when the feature is active.\n\nThis capability belongs to the `access_token_substrate` layer, not to any\nspecific OIDC mode.",
+			"oneOf": [
+				{
+					"description": "Token propagation is disabled — no downstream forwarding.",
+					"type": "object",
+					"properties": {
+						"kind": {
+							"type": "string",
+							"const": "disabled"
+						}
+					},
+					"required": ["kind"]
+				},
+				{
+					"description": "Token propagation is enabled with the associated policy configuration.",
+					"type": "object",
+					"properties": {
+						"default_policy": {
+							"description": "Default propagation policy applied by the server.",
+							"$ref": "#/$defs/BearerPropagationPolicy",
+							"default": "validate_then_forward"
+						},
+						"destination_policy": {
+							"description": "Explicit destination allowlist for direct bearer forwarding.",
+							"$ref": "#/$defs/PropagationDestinationPolicy",
+							"default": {
+								"allowed_node_ids": [],
+								"allowed_targets": [],
+								"deny_sensitive_ip_literals": false,
+								"require_explicit_port": false
+							}
+						},
+						"token_validation": {
+							"description": "Additional token claim checks required before forwarding.",
+							"$ref": "#/$defs/PropagatedTokenValidationConfig",
+							"default": {
+								"required_issuers": [],
+								"allowed_audiences": [],
+								"required_scopes": [],
+								"allowed_azp": []
+							}
+						},
+						"kind": {
+							"type": "string",
+							"const": "enabled"
+						}
+					},
+					"required": ["kind"]
+				}
+			]
+		},
+		"BearerPropagationPolicy": {
+			"description": "Controls how a validated upstream bearer token may be propagated downstream.",
+			"oneOf": [
+				{
+					"description": "Forward the original bearer token only after destination and token\nchecks pass.",
+					"type": "string",
+					"const": "validate_then_forward"
+				},
+				{
+					"description": "* not implemented yet, planned for future\n     * \nExchange the upstream token for a downstream-specific token before\ncalling the target.",
+					"type": "string",
+					"const": "exchange_for_downstream_token"
+				}
+			]
+		},
+		"PropagationDestinationPolicy": {
+			"description": "Allowlist and safety guards for downstream targets.",
+			"type": "object",
+			"properties": {
+				"allowed_node_ids": {
+					"description": "Stable service identities that may receive forwarded credentials.",
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": []
+				},
+				"allowed_targets": {
+					"description": "Explicit network targets that may receive forwarded credentials.",
+					"type": "array",
+					"items": {
+						"$ref": "#/$defs/AllowedPropagationTarget"
+					},
+					"default": []
+				},
+				"deny_sensitive_ip_literals": {
+					"description": "Reject direct IP-literal targets for loopback/private/link-local style\naddresses unless they are explicitly allowed by a matching CIDR\nrule.",
+					"type": "boolean",
+					"default": true
+				},
+				"require_explicit_port": {
+					"description": "Require callers that build targets from URLs to provide an explicit\nport.",
+					"type": "boolean",
+					"default": true
+				}
+			}
+		},
+		"AllowedPropagationTarget": {
+			"description": "A single downstream target allowlist rule.",
+			"oneOf": [
+				{
+					"description": "Match one exact origin tuple.",
+					"type": "object",
+					"properties": {
+						"scheme": {
+							"$ref": "#/$defs/PropagationScheme"
+						},
+						"hostname": {
+							"type": "string"
+						},
+						"port": {
+							"type": "integer",
+							"format": "uint16",
+							"minimum": 0,
+							"maximum": 65535
+						},
+						"kind": {
+							"type": "string",
+							"const": "exact_origin"
+						}
+					},
+					"required": ["kind", "scheme", "hostname", "port"]
+				},
+				{
+					"description": "Match one domain suffix such as `mesh.internal.example.com`.",
+					"type": "object",
+					"properties": {
+						"scheme": {
+							"$ref": "#/$defs/PropagationScheme"
+						},
+						"domain_suffix": {
+							"type": "string"
+						},
+						"port": {
+							"type": "integer",
+							"format": "uint16",
+							"minimum": 0,
+							"maximum": 65535
+						},
+						"kind": {
+							"type": "string",
+							"const": "domain_suffix"
+						}
+					},
+					"required": ["kind", "scheme", "domain_suffix", "port"]
+				},
+				{
+					"description": "Match domains with a compiled regex. Serialized with `serde_regex`.",
+					"type": "object",
+					"properties": {
+						"scheme": {
+							"$ref": "#/$defs/PropagationScheme"
+						},
+						"domain_regex": {
+							"type": "string"
+						},
+						"port": {
+							"type": "integer",
+							"format": "uint16",
+							"minimum": 0,
+							"maximum": 65535
+						},
+						"kind": {
+							"type": "string",
+							"const": "domain_regex"
+						}
+					},
+					"required": ["kind", "scheme", "domain_regex", "port"]
+				},
+				{
+					"description": "Match IP-literal targets inside the configured CIDR.",
+					"type": "object",
+					"properties": {
+						"scheme": {
+							"$ref": "#/$defs/PropagationScheme"
+						},
+						"cidr": {
+							"type": "string"
+						},
+						"port": {
+							"type": "integer",
+							"format": "uint16",
+							"minimum": 0,
+							"maximum": 65535
+						},
+						"kind": {
+							"type": "string",
+							"const": "cidr"
+						}
+					},
+					"required": ["kind", "scheme", "cidr", "port"]
+				}
+			]
+		},
+		"PropagationScheme": {
+			"description": "Normalized scheme used for downstream propagation rules.",
+			"type": "string",
+			"enum": ["https", "http"]
+		},
+		"PropagatedTokenValidationConfig": {
+			"description": "Additional token constraints evaluated before a bearer token may be\nforwarded.",
+			"type": "object",
+			"properties": {
+				"required_issuers": {
+					"description": "Allowed issuers for the upstream token source.",
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": []
+				},
+				"allowed_audiences": {
+					"description": "At least one audience must match when this list is not empty.",
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": []
+				},
+				"required_scopes": {
+					"description": "Every listed scope must be present when this list is not empty.",
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": []
+				},
+				"allowed_azp": {
+					"description": "Allowed authorized-party values when this list is not empty.",
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": []
+				}
+			}
+		},
+		"OidcIdentityClaimConfig": {
+			"oneOf": [
+				{
+					"type": "object",
+					"properties": {
+						"type": {
+							"type": "string",
+							"const": "sub"
+						}
+					},
+					"required": ["type"]
+				},
+				{
+					"type": "object",
+					"properties": {
+						"type": {
+							"type": "string",
+							"const": "email"
+						}
+					},
+					"required": ["type"]
+				},
+				{
+					"type": "object",
+					"properties": {
+						"type": {
+							"type": "string",
+							"const": "name"
+						}
+					},
+					"required": ["type"]
+				},
+				{
+					"type": "object",
+					"properties": {
+						"type": {
+							"type": "string",
+							"const": "preferred_username"
+						}
+					},
+					"required": ["type"]
+				},
+				{
+					"type": "object",
+					"properties": {
+						"claim_name": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string",
+							"const": "custom_claim"
+						}
+					},
+					"required": ["type", "claim_name"]
+				}
+			]
+		},
+		"TokenSetConfig": {
+			"type": "object",
+			"properties": {
+				"facade_paths": {
+					"$ref": "#/$defs/BackendOidcFacadePathsConfig",
+					"default": {
+						"start": "/api/auth/token-set/oidc/source/{source}/start",
+						"callback": "/api/auth/token-set/oidc/source/{source}/callback"
+					}
+				},
+				"storage_policy": {
+					"$ref": "#/$defs/TokenSetStoragePolicyConfig",
+					"default": {
+						"pending_state_store": "server-moka",
+						"refresh_token_material": "sealed"
+					}
+				},
+				"browser_client_binding_required": {
+					"type": "boolean",
+					"default": true
+				},
+				"cookie_session_dashboard_only": {
+					"type": "boolean",
+					"default": true
+				}
+			},
+			"additionalProperties": false
+		},
+		"BackendOidcFacadePathsConfig": {
+			"type": "object",
+			"properties": {
+				"start": {
+					"type": "string",
+					"default": "/api/auth/token-set/oidc/source/{source}/start"
+				},
+				"callback": {
+					"type": "string",
+					"default": "/api/auth/token-set/oidc/source/{source}/callback"
+				}
+			},
+			"additionalProperties": false
+		},
+		"TokenSetStoragePolicyConfig": {
+			"type": "object",
+			"properties": {
+				"pending_state_store": {
+					"type": "string",
+					"default": "server-moka"
+				},
+				"refresh_token_material": {
+					"type": "string",
+					"default": "sealed"
+				}
+			},
+			"additionalProperties": false
+		},
+		"DatabaseConfig": {
+			"type": "object",
+			"properties": {
+				"url": {
+					"anyOf": [
+						{
+							"$ref": "#/$defs/SecretString"
+						},
+						{
+							"type": "null"
+						}
+					],
+					"default": null
+				},
+				"auto_migrate": {
+					"oneOf": [
+						{
+							"type": "boolean"
+						},
+						{
+							"type": "integer",
+							"enum": [0, 1]
+						},
+						{
+							"type": "string",
+							"enum": ["true", "false", "yes", "no", "on", "off", "1", "0"]
+						}
+					],
+					"default": false
+				}
+			},
+			"additionalProperties": false
+		}
+	}
+}

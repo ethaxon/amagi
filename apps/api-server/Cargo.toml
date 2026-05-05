@@ -1,0 +1,25 @@
+[package]
+name = "amagi-api-server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+amagi-auth = { workspace = true }
+amagi-bookmarks = { workspace = true }
+amagi-config = { workspace = true }
+amagi-db = { workspace = true }
+amagi-securitydept = { workspace = true }
+amagi-sync = { workspace = true }
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+snafu = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+amagi-test-utils = { workspace = true }
+sea-orm = { workspace = true }

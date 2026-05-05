@@ -1,0 +1,18 @@
+[package]
+name = "amagi-auth"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+amagi-config = { workspace = true }
+amagi-db = { workspace = true }
+amagi-securitydept = { workspace = true }
+sea-orm = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+snafu = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+amagi-test-utils = { workspace = true }
+tokio = { workspace = true }

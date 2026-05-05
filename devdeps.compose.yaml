@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: amagi
+      POSTGRES_PASSWORD: amagi
+      POSTGRES_DB: amagi
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  dexidp:
+    image: dexidp/dex:latest-alpine
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+    ports:
+      - "5556:5556"
+    volumes:
+      - ./dev/dex-config:/etc/dex:ro
+
+volumes:
+  postgres_data:

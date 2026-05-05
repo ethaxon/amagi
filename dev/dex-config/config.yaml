@@ -1,0 +1,45 @@
+issuer: http://localhost:5556
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  grantTypes:
+    - authorization_code
+    - refresh_token
+    - password
+  responseTypes:
+    - code
+  skipApprovalScreen: true
+  alwaysShowLoginScreen: false
+  passwordConnector: local
+  pkce:
+    enforce: false
+    codeChallengeMethodsSupported:
+      - S256
+      - plain
+
+staticClients:
+  - id: amagi
+    name: Amagi Local Dev
+    secret: amagi
+    redirectURIs:
+      - http://127.0.0.1:7800/api/auth/token-set/oidc/source/default/callback
+      - http://localhost:7800/api/auth/token-set/oidc/source/default/callback
+      - http://127.0.0.1:7800/auth/token-set/oidc/source/default/callback
+      - http://localhost:7800/auth/token-set/oidc/source/default/callback
+
+enablePasswordDB: true
+
+staticPasswords:
+  - email: amagi
+    # bcrypt hash for password: amagi
+    hash: "$2a$10$HIJay5K/uZWiiLRxLDPAj.3MoldkasuiNyMl34y2xDTZe.ugS/J9G"
+    username: amagi
+    name: Amagi Local User
+    emailVerified: true
+    preferredUsername: amagi
+    userID: amagi-local-user

@@ -2,35 +2,62 @@ set dotenv-load := true
 set windows-shell := ["pwsh.exe", "-NoLogo", "-ExecutionPolicy", "RemoteSigned", "-Command"]
 
 setup:
+    mise install
     pnpm install
-    cargo check --workspace
+    cargo check --workspace --all-features
 
-build-webui:
-    cd apps/webui && pnpm build
+build-dashboard:
+    cd apps/dashboard-web && pnpm build
 
-build-server:
-    cargo build --manifest-path apps/server/Cargo.toml --release
+build-extension:
+    cd apps/extension-web && pnpm build
 
-build-cli:
-    cargo build --manifest-path apps/cli/Cargo.toml --release
+build-api:
+    cargo build --manifest-path apps/api-server/Cargo.toml
 
-build: build-webui
+build: build-api build-dashboard build-extension
 
-run-server: build
-    cargo run --manifest-path apps/server/Cargo.toml --release
+dev-api:
+    watchexec --watch apps/api-server --watch packages --exts rs,toml -- cargo run --manifest-path apps/api-server/Cargo.toml
 
-dev-webui:
-    cd apps/webui && pnpm dev
+dev-dashboard:
+    cd apps/dashboard-web && pnpm dev
 
-dev-server:
-    watchexec --restart --watch apps/server --watch packages/core --watch config.toml --exts rs,toml -- cargo run --manifest-path apps/server/Cargo.toml
+dev-extension:
+    cd apps/extension-web && pnpm dev
 
-dev: dev-server
+dev-deps:
+    docker compose -f devdeps.compose.yaml up
+
+dev-deps-clean:
+    docker compose -f devdeps.compose.yaml down -v
+
+dev:
+    zellij --layout zellij-dev.kdl
 
 lint-rs:
-    cargo clippy --workspace -F "securitydept-creds/zone"
+    cargo clippy --workspace --all-features --all-targets
 
 lint-ts:
     pnpm lint
 
 lint: lint-rs lint-ts
+
+fix-rs:
+    cargo clippy --workspace --all-features --all-targets --fix --allow-dirty
+
+fix-ts:
+    pnpm lint-fix
+
+fix: fix-rs fix-ts
+
+test-ts:
+    pnpm test
+
+test-rs:
+    cargo test --workspace --all-features
+
+test: test-rs test-ts
+
+typecheck:
+    pnpm typecheck

@@ -2,87 +2,110 @@
 
 amagi is a self-hosted bookmark control plane.
 
-It is not merely a "bookmark syncer", but a complete system built around **cloud as source of truth**, **policy-driven sync**, **device/browser-specific projection**, **private vault**, and **manual sync first**.
+It is not just a bookmark syncer. The project is designed around cloud-owned bookmark state, rule-driven projection, manual preview/apply sync, browser-specific capabilities, and private vault libraries that do not leak into ordinary browser bookmark trees by default.
 
-[中文版本](README_zh.md)
-
-> **Status: Prototype / Not Production-Ready**
+> **Status: early prototype**
 >
-> This project is currently in the prototype stage and is NOT production-ready.
-> No stable releases, APIs, or data formats are guaranteed at this time.
+> amagi is not production-ready. The architecture, APIs, database schema, configuration surface, browser extension packaging, and sync protocol are still allowed to change. Do not treat the current code or docs as a stable release contract.
 
-Core capabilities:
+---
 
-- Self-hosted, server built with Rust + PostgreSQL
-- Dashboard Web UI using Vite + React + TanStack suite + shadcn/ui + Tailwind CSS
-- Multi-browser, multi-platform support
-- Centralized cloud management for bookmarks, folders, tags, sync rules, devices, and conflicts
-- Filter sync scope by device/browser/platform
-- Manual sync by default
-- Private vault (vault) with step-up authentication
-- Custom OIDC login support, with step-up auth / WebAuthn for vault access
+[English](README.md) | [中文](README_zh.md)
 
-## Core Principles
+## Use amagi
 
-1. **Cloud as Source of Truth**
-   - Browser's local bookmark tree is not the database, just a projection of cloud state
+There is no stable packaged release yet. Use this repository as a development workspace and architecture prototype.
 
-2. **Sync is Policy-Driven Projection**
-   - Different devices / browsers can receive different content
+The intended product shape is:
 
-3. **Separation of Normal and Private Bookmarks**
-   - `normal` libraries can be mapped to browser's native bookmark tree
-   - `vault` libraries are NOT mapped to browser's native bookmark tree by default
+- Rust + Axum API server backed by PostgreSQL
+- SeaORM / SeaQuery schema and repository boundary
+- SecurityDept token-set OIDC integration for browser and dashboard authentication
+- Dashboard Web UI for library, sync, vault, and conflict management
+- WXT-based browser extension shell with a shared WebExtension adapter
+- Shared TypeScript sync client for manual preview/apply orchestration
 
-4. **Manual Sync First**
-   - Recommended flow: explicit preview -> apply sync process
+The current implementation is a staged baseline, not a finished product. Some surfaces exist only as skeletons or thin vertical slices while the core model is still being validated.
 
-## Current Boundaries
+Start with:
 
-This project clearly distinguishes:
+- [Overview](docs/en/000-OVERVIEW.md)
+- [Architecture](docs/en/001-ARCHITECTURE.md)
+- [Sync](docs/en/005-SYNC.md)
+- [Browser Adapters](docs/en/006-BROWSER-ADAPTERS.md)
+- [Security](docs/en/008-SECURITY.md)
+- [Repository and Delivery](docs/en/009-REPOSITORY-AND-DELIVERY.md)
 
-- Cloud bookmark repository
-- Browser's native bookmark tree
-- Private vault (vault)
+## Develop This Repository
 
-"Full bidirectional sync with native browser bookmark tree" for Safari / iOS / Android is NOT strongly committed as a first-stage goal; see:
+Local setup:
 
-- `docs/005-SYNC_zh.md`
-- `docs/006-BROWSER-ADAPTERS_zh.md`
+```bash
+just setup
+```
 
-## Suggested Documents Reading Order
+Start local development dependencies, including PostgreSQL and the local Dex OIDC provider:
 
-### For Human Readers
+```bash
+just dev-deps
+```
 
-1. `docs/000-OVERVIEW_zh.md`
-2. `docs/001-ARCHITECTURE_zh.md`
-3. `docs/005-SYNC_zh.md`
-4. `docs/006-BROWSER-ADAPTERS_zh.md`
-5. `docs/008-SECURITY_zh.md`
-6. `docs/009-REPOSITORY-AND-DELIVERY_zh.md`
+Common loops:
 
-### For Implementers
+```bash
+just dev-api
+just dev-dashboard
+just dev-extension
+just lint
+just typecheck
+just test
+just build
+```
 
-1. `docs/002-DOMAIN-MODEL_zh.md`
-2. `docs/003-DATABASE_zh.md`
-3. `docs/004-API_zh.md`
-4. `docs/005-SYNC_zh.md`
-5. `docs/007-WEB-UI_zh.md`
-6. `docs/009-REPOSITORY-AND-DELIVERY_zh.md`
+If your non-interactive shell cannot find tools managed by `mise`, wrap commands for that shell only:
 
-## Non-Goals (First Stage)
+```bash
+mise exec --command "just lint"
+```
 
-The following capabilities are NOT required for the first stage:
+Do not add `mise exec` noise to project recipes solely for agent shells.
+
+## Current Architecture Boundaries
+
+- The cloud database is the source of truth. A browser's native bookmark tree is only a projection.
+- Sync is rule-driven and explicit. The default workflow is scan, preview, user confirmation, apply, then ack.
+- Normal libraries and vault libraries are separate security and sync concepts. Vault content must not be sent through ordinary browser sync streams by default.
+- Protocol-bound auth endpoints use the stable `/api/auth/...` facade shape; business resources use versioned `/api/v1/...` APIs.
+- Browser extension work should converge on WXT plus a shared WebExtension adapter, not long-lived per-browser adapter packages.
+- Safari and mobile browsers are degraded-capability targets until their native bookmark control constraints are explicitly solved.
+
+## Documentation Map
+
+Source documentation lives in `docs/en` and `docs/zh`.
+
+For implementers:
+
+- [Domain Model](docs/en/002-DOMAIN-MODEL.md)
+- [Database](docs/en/003-DATABASE.md)
+- [API](docs/en/004-API.md)
+- [Sync](docs/en/005-SYNC.md)
+- [Web UI](docs/en/007-WEB-UI.md)
+- [Repository and Delivery](docs/en/009-REPOSITORY-AND-DELIVERY.md)
+
+Documentation should describe current behavior or explicit future plans. Historical implementation notes belong in `CHANGELOG.md` or `temp/IMPL_*` iteration files.
+
+## Non-Goals For The First Stage
 
 - Full bidirectional sync with Safari's native bookmark tree
+- Native mobile bookmark tree control
 - End-to-end encrypted search
 - Real-time CRDT collaboration
-- Complex multi-tenant team sharing models
-- Full-platform native clients
+- Complex multi-tenant team sharing
+- Stable public package or Docker release contract
 
-If these capabilities need to be added, they should be built incrementally on top of the existing architecture, rather than refactoring the core sync model in reverse.
+These may be added later, but they should evolve from the documented source-of-truth, projection, sync, and vault model instead of reversing those foundations.
 
-## LICENSE
+## License
 
 [MPL-2.0](LICENSE.md)
 
@@ -90,8 +113,8 @@ If these capabilities need to be added, they should be built incrementally on to
 
 The project name `amagi` comes from "Amagi", a state-management maid robot from the light novel series "I'm the Villainous Lord of the Interstellar Nation!".
 
-In this project, amagi's position is:
+In this project, amagi's role is the control plane for bookmark state, sync projection, device coordination, authorization, unlock, and audit.
 
-- Control plane for the bookmark system
-- Coordinator between devices and browsers
-- Unified entry point for permissions, sync, projection, unlock, and audit
+---
+
+[English](README.md) | [中文](README_zh.md)

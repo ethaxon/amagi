@@ -1,0 +1,17 @@
+{
+	"name": "@ethaxon/amagi-sync-client",
+	"version": "0.0.1",
+	"type": "module",
+	"exports": {
+		".": {
+			"monorepo-tsc": "./src/index.ts",
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.mts"
+		}
+	},
+	"scripts": {
+		"build": "tsdown",
+		"typecheck": "tsc -b --force",
+		"test": "vitest run --root ../../ --config vitest.config.ts packages/amagi-sync-client/src/__tests__"
+	}
+}

@@ -1,10 +1,62 @@
 [workspace]
-members = []
+members = [
+    "apps/api-server",
+    "packages/amagi-auth",
+    "packages/amagi-sync",
+    "packages/amagi-config",
+    "packages/amagi-db",
+    "packages/amagi-db-migration",
+    "packages/amagi-bookmarks",
+    "packages/amagi-securitydept",
+    "packages/amagi-test-utils",
+]
 resolver = "3"
 
 [workspace.dependencies]
+amagi-auth = { path = "packages/amagi-auth" }
+amagi-sync = { path = "packages/amagi-sync" }
+amagi-config = { path = "packages/amagi-config" }
+amagi-db = { path = "packages/amagi-db" }
+amagi-db-migration = { path = "packages/amagi-db-migration" }
+amagi-bookmarks = { path = "packages/amagi-bookmarks" }
+amagi-securitydept = { path = "packages/amagi-securitydept" }
+amagi-test-utils = { path = "packages/amagi-test-utils" }
+chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 axum = { version = "0.8", features = ["macros"] }
 serde_json = "1"
+schemars = { version = "1", features = ["preserve_order"] }
+figment = { version = "0.10", features = ["env", "toml"] }
 snafu = "0.9"
 tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "cookies",
+    "json",
+    "rustls-tls",
+] }
+securitydept-core = { version = "~0.3.0-beta.2", default-features = false, features = [
+    "config-schema",
+    "token-set-context",
+    "token-set-context-recommend",
+    "oidc-client-moka-pending-store",
+] }
+testcontainers = "0.27.3"
+testcontainers-modules = "0.15.0"
+rstest = "0.26.1"
+tower = { version = "0.5", features = ["util"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+sea-orm = { version = "2.0.0-rc.38", features = [
+    "runtime-tokio-rustls",
+    "sqlx-postgres",
+    "with-json",
+    "with-uuid",
+] }
+sea-orm-migration = { version = "2.0.0-rc.38", features = [
+    "runtime-tokio-rustls",
+    "sqlx-postgres",
+    "with-json",
+    "with-uuid",
+] }
+sha2 = "0.10"
+uuid = { version = "1", features = ["serde", "v7"] }

@@ -10,14 +10,25 @@ data/*
 temp/*
 !temp/.gitkeep
 
-temp
+# Rust Dev
+rustc-ice*
 **/target
 
 # Web Dev
 /webui
 **/dist
+**/dist-tsc
 **/.vite
 **/.vitest
 **/node_modules
 **/tsconfig.tsbuildinfo
 **/*.local.*
+
+# Misc
+
+temp
+!temp/.gitkeep
+.gitnexus
+
+# Database
+**/*.session.sql

@@ -6,10 +6,16 @@ repos:
         entry: pnpm lint
         language: system
         pass_filenames: false
-        stages: [commit]
+        stages: [ commit ]
+      - id: pnpm-typecheck
+        name: pnpm typecheck
+        entry: pnpm typecheck
+        language: system
+        pass_filenames: false
+        stages: [ commit ]
       - id: cargo-clippy
         name: cargo clippy
         entry: cargo clippy
         language: system
         pass_filenames: false
-        stages: [commit]
+        stages: [ commit ]

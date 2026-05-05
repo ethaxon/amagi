@@ -1,41 +1,56 @@
 {
-    "yaml.customTags": [
-        "!reset scalar",
-        "!reset sequence",
-        "!reset map",
-        "!reset",
-        "!override scalar",
-        "!override sequence",
-        "!override map",
-        "!override"
-    ],
-    "yaml.schemas": {
-        "https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json": [
-            "**/*docker-compose*.yml"
-        ]
-    },
-    "editor.formatOnSave": true,
-    "[javascript]": {
-        "editor.defaultFormatter": "biomejs.biome"
-    },
-    "[javascriptreact]": {
-        "editor.defaultFormatter": "biomejs.biome"
-    },
-    "[typescript]": {
-        "editor.defaultFormatter": "biomejs.biome"
-    },
-    "[typescriptreact]": {
-        "editor.defaultFormatter": "biomejs.biome"
-    },
-    "[json]": {
-        "editor.defaultFormatter": "biomejs.biome"
-    },
-    "[jsonc]": {
-        "editor.defaultFormatter": "biomejs.biome"
-    },
-    "npm.packageManager": "pnpm",
-    "editor.codeActionsOnSave": {
-        "source.organizeImports.biome": "explicit",
-        "source.fixAll.biome": "explicit"
-    }
+	"yaml.customTags": [
+		"!reset scalar",
+		"!reset sequence",
+		"!reset map",
+		"!reset",
+		"!override scalar",
+		"!override sequence",
+		"!override map",
+		"!override"
+	],
+	"yaml.schemas": {
+		"https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json": [
+			"**/*docker-compose*.yml"
+		]
+	},
+	"editor.formatOnSave": true,
+	"[javascript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[javascriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"npm.packageManager": "pnpm",
+	"editor.codeActionsOnSave": {
+		"source.organizeImports.biome": "explicit",
+		"source.fixAll.biome": "explicit"
+	},
+	"ruff.format.preview": true,
+	"terminal.integrated.macOptionIsMeta": true,
+	"sqltools.connections": [
+		{
+			"ssh": "Disabled",
+			"previewLimit": 50,
+			"server": "localhost",
+			"port": 5432,
+			"driver": "PostgreSQL",
+			"name": "local-dev",
+			"password": "amagi",
+			"database": "amagi",
+			"username": "amagi"
+		}
+	]
 }

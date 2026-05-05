@@ -6,6 +6,7 @@
 		"ms-azuretools.vscode-containers",
 		"samuelcolvin.jinjahtml",
 		"hverlin.mise-vscode",
-		"biomejs.biome"
+		"biomejs.biome",
+		"atoolz.zellij-vscode-toolkit"
 	]
 }

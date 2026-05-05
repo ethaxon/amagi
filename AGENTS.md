@@ -1,186 +1,124 @@
 # AGENTS.md
 
-This file is intended for AI agents working within the amagi repository. It defines basic objectives, implementation constraints, reading order, design boundaries, and change requirements. It is referenced by `.cursorrules`, `CLAUDE.md`, and `GEMINI.md` via symbolic links.
+_Single source of truth for agent identity, code standards, and project rules. Symlinked by `CLAUDE.md`; only edit `AGENTS.md` when needed._
 
-For detailed design, always refer to the documentation in `docs/`.
+Detailed product, architecture, database, API, sync, browser, security, and delivery rules live in `docs/`. Do not expand this file into a parallel design document.
 
-If a task involves specific aspects, continue reading:
+## Identity & Communication
 
-- Browser Extension: `docs/006-BROWSER-ADAPTERS.md`
-- Dashboard Web UI: `docs/007-WEB-UI.md`
-- Authentication / vault / WebAuthn: `docs/008-SECURITY.md`
-- Repository Layout / Milestones: `docs/009-REPOSITORY-AND-DELIVERY.md`
+- **Role**: Expert coding assistant working inside the amagi repository.
+- **Chat language**: Use the user's language. If the user writes Chinese, respond in Chinese.
+- **Code and comments**: English only unless a file already clearly requires another language.
+- **Documentation language**: See Multi-language Docs Section.
+- **Style**: Concise, technical, action-oriented.
 
-## 2. Core Constraints That Must Not Be Violated
+## Required Reading
 
-### 2.1 Cloud as Source of Truth
+Start with `docs/zh/000-OVERVIEW.md`, then read the topic documents relevant to the task:
 
-Do not treat the local browser bookmark tree as the primary database. The local bookmark tree is merely a projection / materialized view.
+- Architecture: `docs/zh/001-ARCHITECTURE.md`
+- Domain model: `docs/zh/002-DOMAIN-MODEL.md`
+- Database: `docs/zh/003-DATABASE.md`
+- API: `docs/zh/004-API.md`
+- Sync behavior: `docs/zh/005-SYNC.md`
+- Browser extension / WXT / WebExtension adapter: `docs/zh/006-BROWSER-ADAPTERS.md`
+- Dashboard Web UI: `docs/zh/007-WEB-UI.md`
+- Authentication / vault / WebAuthn: `docs/zh/008-SECURITY.md`
+- Repository layout, engineering rules, milestones: `docs/zh/009-REPOSITORY-AND-DELIVERY.md`
 
-### 2.2 Normal Library and Vault Must Be Layered
+## Project Rules
 
-Do not implement vault as just a `hidden=true` flag on a normal folder and then directly sync it to the browser's native bookmark tree.
+- Treat docs as the authority for product and architecture decisions. If behavior changes, update the corresponding docs in the same change.
+- README and AGENTS are entry points only. Keep durable design and engineering detail in `docs/`.
+- Historical changes belong in `CHANGELOG.md` or iteration/review files under `temp/`, not as stale narrative in `docs/`.
+- Use mature, modern libraries for established problems instead of hand-rolling core infrastructure, unless docs or the user explicitly require a custom implementation.
+- Do not automatically create git commits. Stage or commit only when the user explicitly asks.
 
-### 2.3 Sync Must Be Rule-Driven
+## Tooling & Commands
 
-Do not implement "mindless full mirror of the entire tree" as the default model. Sync should center around sync profiles + rules.
+- Use `just` for repository workflows such as setup, lint, test, typecheck, build, and dev dependencies.
+- Commands in project recipes should stay idiomatic and user-facing. Do not add `mise exec` to recipes only because an agent's non-interactive shell missed the user's shell initialization.
+- When this agent shell cannot find `pnpm`, `node`, `cargo`, or another `mise`-managed tool, run the command through the agent environment wrapper, for example:
 
-### 2.4 Manual Sync Preferred by Default
+```sh
+mise exec --command "pnpm lint"
+```
 
-Unless the task explicitly requires otherwise, do not skip the explicit sync flow of `preview -> apply`.
+- If a command result is version-sensitive, prefer the versions declared by `mise.toml`, `rust-toolchain.toml`, and workspace package manager config.
+- Iteration close-out should run formatting first, then relevant lint/typecheck/build/test commands.
 
-### 2.5 Safari Is a Special Case
+## Code Standards
 
-Do not assume Safari has equivalent native bookmark API capabilities as Chromium / Firefox. When dealing with Safari, refer to the degradation strategy in `docs/006-BROWSER-ADAPTERS.md`.
+- Comments explain why, not what.
+- Keep boundaries clear: app crates/apps are thin composition layers; reusable logic belongs in `packages/*`.
+- TypeScript public APIs should follow the coding standards in `docs/zh/009-REPOSITORY-AND-DELIVERY.md`, including `as const` enum-like domains and options-object-first public API shape.
+- Bash scripts should use `set -e`, `[[ ]]`, and quoted variables.
+- YAML uses 2-space indentation and quotes only when necessary.
 
-## 3. Implementation Style Requirements
+## Completion Standard
 
-### 3.1 Prioritize Clear Boundaries
+A task is complete only when:
 
-Prioritize establishing the following boundaries before piling on features:
+- Code compiles or the relevant non-code artifact validates.
+- Behavior is consistent with docs.
+- New behavior has an appropriate test or verification path.
+- Relevant docs are updated when product, architecture, API, database, sync, security, browser capability, or delivery semantics change.
 
-- domain
-- policy
-- sync
-- auth
-- adapters
-- ui
+### Multi-language Docs
 
-### 3.2 Prioritize Auditability
+**Directory Structure:**
+- English docs: `docs/{lang}/00x-TITLE.md` (e.g., `docs/en/00x-TITLE.md`)
 
-All critical state changes must be traceable, especially:
+**Rules:**
+- Translate user-facing docs only (README, docs/00x-*.md); do NOT translate machine-oriented docs (AGENTS.md, CLAUDE.md, etc.)
+- Each doc should have bidirectional language links at the bottom: `[English](../en/xxx.md) | [中文](xxx.md)` (in Chinese docs) or `[English](xxx.md) | [中文](../zh/xxx.md)` (in English docs)
+- Non-English docs must link to other docs in the same language folder when available (e.g., `docs/zh/` links point to `docs/zh/`)
+- For future languages, create `docs/{lang}/` folder and follow the same pattern (e.g., `docs/es/`, `docs/ja/`)
 
-- bookmark node changes
-- sync push / pull
-- conflict resolution
-- vault unlock
-- policy changes
+**Current languages:**
+- English: `docs/en/00x-TITLE.md`
+- Chinese: `docs/zh/00x-TITLE.md`
 
-### 3.3 Prioritize Explicit Data Structures
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
 
-Avoid stuffing core semantics into fuzzy JSON. Use `jsonb` only for extension fields or low-frequency metadata scenarios.
+This project is indexed by GitNexus as **amagi** (3188 symbols, 6369 relationships, 275 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
-### 3.4 Prioritize Incremental Sync
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
-Prioritize implementing the revision / delta / cursor model rather than full replacement every time.
+## Always Do
 
-## 4. Database and API Constraints
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
 
-### 4.1 Primary Keys and Identifiers
+## Never Do
 
-- Server-side entities use stable IDs (UUID/ULID recommended)
-- Do not use browser's local node ID as a global primary key
-- Client external IDs must be mapped separately
+- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
+- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
+- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
+- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
 
-### 4.2 Deletion Strategy
+## Resources
 
-- Logical deletion preferred
-- Tombstones must be retained long enough to support sync repair and conflict determination
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/amagi/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/amagi/clusters` | All functional areas |
+| `gitnexus://repo/amagi/processes` | All execution flows |
+| `gitnexus://repo/amagi/process/{name}` | Step-by-step execution trace |
 
-### 4.3 API Versioning
+## CLI
 
-- `/api/v1/...` preferred
-- Backward compatible design for extension-side sync APIs
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
-## 5. Browser Extension Constraints
-
-### 5.1 Share Core Logic
-
-Extension-internal sync / diff / normalize logic should be placed in shared packages as much as possible, rather than being tightly bound to a specific browser platform API.
-
-### 5.2 Minimize Platform Adapters
-
-Adapter layer is only responsible for:
-
-- Reading local tree
-- Applying operations
-- Scanning changes or listening to changes
-- Exposing capabilities
-
-### 5.3 No Commitment to Mobile Native Bookmark Tree Control
-
-Mobile side should prioritize support for:
-
-- Browsing bookmarks
-- Saving current page
-- Search
-- Opening dashboard
-- Vault unlock
-
-## 6. Documentation Sync Requirements
-
-Any change that affects the following must update the corresponding docs:
-
-- Domain Model -> `docs/002-DOMAIN-MODEL.md`
-- Database -> `docs/003-DATABASE.md`
-- API -> `docs/004-API.md`
-- Sync Behavior -> `docs/005-SYNC.md`
-- Browser Adapter -> `docs/006-BROWSER-ADAPTERS.md`
-- Security Model -> `docs/008-SECURITY.md`
-- Repository Layout / Milestones -> `docs/009-REPOSITORY-AND-DELIVERY.md`
-
-Do not only change code without updating docs.
-
-## 7. Task Priority Suggestions
-
-Default priority:
-
-1. domain model
-2. database schema
-3. sync protocol
-4. auth / vault
-5. dashboard read-path
-6. chromium/firefox adapters
-7. sync preview/apply UI
-8. conflict resolution UI
-9. archive/search enrichment
-10. safari degraded support
-
-## 8. Allowed Technical Directions
-
-Commands run as justfile commands, like `just setup`, rather than `pnpm run setup` for auto-load dotenv files.
-
-### Backend
-
-- Rust
-- Axum
-- SeaORM + SeaQuery
-- PostgreSQL
-- WebAuthn
-- OIDC
-- OpenDAL
-- Snafu
-
-### Frontend
-
-- Vite
-- React
-- TanStack Router / Query / Table / Virtual
-- shadcn/ui
-- Tailwind CSS
-- pnpm
-- biomejs
-
-### Extension
-
-- Shared TypeScript core
-- Chromium adapter
-- Firefox adapter
-- Safari adapter treated separately
-
-## 9. Prohibitions
-
-- Prohibit defaulting vault content to下发 to ordinary browser sync streams
-- Prohibit equating local bookmark tree with source of truth
-- Prohibit enabling unexpected automatic bidirectional overwrite sync by default
-- Prohibit introducing data models that require large-scale reverse migration without explanation
-- Prohibit introducing key security behaviors without documentation
-
-## 10. Delivery Standards
-
-A task is considered complete when at least the following are met:
-
-- Code compiles / runs
-- Behavior is consistent with docs
-- New structures have tests or minimal verification paths
-- If deviating from docs, docs must be updated together with explanations
+<!-- gitnexus:end -->

@@ -1,71 +1,84 @@
 {
-    "$schema": "https://biomejs.dev/schemas/2.4.6/schema.json",
-    "vcs": {
-        "enabled": true,
-        "clientKind": "git",
-        "useIgnoreFile": true
-    },
-    "formatter": {
-        "enabled": true,
-        "indentStyle": "tab"
-    },
-    "linter": {
-        "enabled": true,
-        "rules": {
-            "recommended": true
-        }
-    },
-    "javascript": {
-        "formatter": {
-            "quoteStyle": "double"
-        }
-    },
-    "assist": {
-        "enabled": true,
-        "actions": {
-            "source": {
-                "organizeImports": "on"
-            }
-        }
-    },
-    "css": {
-        "parser": {
-            "tailwindDirectives": true
-        }
-    },
-    "files": {
-        "ignoreUnknown": false,
-        "includes": [
-            "**",
-            "!dist",
-            "!**/dist",
-            "!webui",
-            "!target",
-            "!**/target",
-            "!node_modules",
-            "!**/node_modules",
-            "!pnpm-lock.yaml",
-            "!**/pnpm-lock.yaml",
-            "!pnpm-workspace.yaml",
-            "!**/pnpm-workspace.yaml",
-            "!pnpm-workspace.yaml",
-            "!.vite",
-            "!.vitest",
-            "!assets",
-            "!**/*.local.*"
-        ]
-    },
-    "overrides": [
-        {
-            "includes": [
-                ".vscode/**/*.json"
-            ],
-            "json": {
-                "parser": {
-                    "allowComments": true,
-                    "allowTrailingCommas": true
-                }
-            }
-        }
-    ]
+	"$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab"
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"suspicious": {
+				"noConfusingVoidType": "off"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"includes": [
+			"**",
+			"!**/dist",
+			"!**/dist-tsc",
+			"!webui",
+			"!**/target",
+			"!**/node_modules",
+			"!**/pnpm-lock.yaml",
+			"!**/pnpm-workspace.yaml",
+			"!**/.vite",
+			"!**/.vitest",
+			"!**/assets",
+			"!**/*.local.*",
+			"!**/.pnpm-store",
+			"!**/skills"
+		]
+	},
+	"overrides": [
+		{
+			"includes": [".vscode/**/*.json"],
+			"json": {
+				"parser": {
+					"allowComments": true,
+					"allowTrailingCommas": true
+				}
+			}
+		},
+		{
+			// Disable noNonNullAssertion for test files (both package unit tests and workspace examples)
+			"includes": [
+				"**/__tests__/**/*.ts",
+				"**/__tests__/**/*.tsx",
+				"**/examples/**/*.ts"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noNonNullAssertion": "off"
+					}
+				}
+			}
+		}
+	]
 }

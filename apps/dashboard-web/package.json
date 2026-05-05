@@ -1,5 +1,10 @@
 {
-    "name": "@ethaxon/amagi-dashboard-web",
-    "version": "0.0.1",
-    "type": "module"
+	"name": "@ethaxon/amagi-dashboard-web",
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"build": "shx echo \"dashboard-web build placeholder\"",
+		"dev": "shx echo \"dashboard-web dev placeholder\"",
+		"typecheck": "tsc -b --force"
+	}
 }

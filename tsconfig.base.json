@@ -1,8 +1,8 @@
 {
 	"compilerOptions": {
+		"customConditions": ["monorepo-tsc"],
+		"emitDeclarationOnly": true,
 		"composite": true,
-		"module": "preserve",
-		"moduleResolution": "bundler",
 		"importHelpers": true,
 		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,
@@ -11,6 +11,7 @@
 		"noImplicitReturns": true,
 		"noFallthroughCasesInSwitch": true,
 		"resolveJsonModule": true,
-		"noPropertyAccessFromIndexSignature": false
+		"noPropertyAccessFromIndexSignature": false,
+		"skipLibCheck": true
 	}
 }

@@ -1,8 +1,0 @@
-config.toml
-**/.env
-**/.env.*
-!**/.env.example
-!**/.env.*.example
-!**/.env.j2
-!**/.env.*.j2
-data/

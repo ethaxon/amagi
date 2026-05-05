@@ -1,17 +1,23 @@
 {
-    "extends": "./tsconfig.base.json",
-    "compilerOptions": {
-        "emitDeclarationOnly": true,
-        "types": [
-            "node"
-        ],
-        "module": "NodeNext",
-        "moduleResolution": "nodenext"
-    },
-    "include": [
-        "**/vite*.ts",
-        "**/vite*.mts",
-        "**/scripts/**/*.ts",
-        "*/claims-script-check.mts"
-    ]
+	"extends": "./tsconfig.base.json",
+	"compilerOptions": {
+		"outDir": "./dist-tsc/scripts",
+		"types": ["node"],
+		"module": "NodeNext",
+		"moduleResolution": "nodenext",
+		"allowImportingTsExtensions": true
+	},
+	"include": [
+		"**/vite*.ts",
+		"**/vite*.mts",
+		"**/vitest*.ts",
+		"**/vitest*.mts",
+		"**/scripts/**/*.ts",
+		"*/claims-script-check.mts"
+	],
+	"references": [
+		{
+			"path": "./apps/extension-web/tsconfig.json"
+		}
+	]
 }

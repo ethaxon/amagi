@@ -1,0 +1,67 @@
+#:schema ./amagi.config.schema.json
+
+default_oidc_source = "default"
+external_base_url = "https://amagi.example.com"
+
+[server]
+host = "127.0.0.1"
+port = 7800
+
+[database]
+# Local development may temporarily set this to true for smoke tests.
+auto_migrate = false
+
+[token_set]
+browser_client_binding_required = true
+cookie_session_dashboard_only = true
+
+[token_set.facade_paths]
+start = "/api/auth/token-set/oidc/source/{source}/start"
+callback = "/api/auth/token-set/oidc/source/{source}/callback"
+
+[token_set.storage_policy]
+pending_state_store = "server-moka"
+refresh_token_material = "sealed"
+
+# oidc_identity_claim defaults to { type = "sub" }
+# Example non-default binding claim:
+# [oidc_sources.default.oidc_identity_claim]
+# type = "custom_claim"
+# claim_name = "employee_id"
+
+[oidc_sources.default.oidc]
+issuer_url = "https://id.example.com"
+well_known_url = "https://id.example.com/.well-known/openid-configuration"
+client_id = "amagi-dashboard"
+scopes = ["openid", "profile", "email"]
+pkce_enabled = true
+
+[oidc_sources.default.backend_oidc.metadata_delivery]
+kind = "redemption"
+
+[oidc_sources.default.backend_oidc.post_auth_redirect]
+kind = "resolved"
+
+[oidc_sources.default.access_token_substrate]
+audiences = ["api://amagi"]
+required_scopes = ["amagi.sync"]
+
+# Example alternate binding claim:
+# [oidc_sources.workforce.oidc_identity_claim]
+# type = "email"
+
+[oidc_sources.workforce.oidc]
+issuer_url = "https://workforce.example.com"
+well_known_url = "https://workforce.example.com/.well-known/openid-configuration"
+client_id = "amagi-extension"
+pkce_enabled = true
+
+[oidc_sources.workforce.backend_oidc.metadata_delivery]
+kind = "redemption"
+
+[oidc_sources.workforce.backend_oidc.post_auth_redirect]
+kind = "resolved"
+
+[oidc_sources.workforce.access_token_substrate]
+audiences = ["api://amagi-workforce"]
+required_scopes = ["amagi.sync"]

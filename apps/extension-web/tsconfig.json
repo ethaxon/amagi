@@ -1,28 +1,20 @@
 {
-    "extends": "../../tsconfig.base.json",
-    "compilerOptions": {
-        "skipLibCheck": true,
-        "outDir": "./dist",
-        "rootDir": "./src",
-        "baseUrl": ".",
-        "paths": {
-            "@/*": [
-                "./src/*"
-            ]
-        },
-        "target": "es2022",
-        "lib": [
-            "esnext",
-            "dom"
-        ],
-        "jsx": "react-jsx"
-    },
-    "include": [
-        "src/**/*.ts",
-        "src/**/*.tsx"
-    ],
-    "exclude": [
-        "**/node_modules",
-        "**/dist"
-    ]
+	"extends": "../../tsconfig.browser.json",
+	"compilerOptions": {
+		"outDir": "./dist-tsc/app",
+		"rootDir": "./src",
+		"paths": {
+			"*": ["./*"],
+			"@/*": ["./src/*"]
+		}
+	},
+	"include": ["src"],
+	"references": [
+		{
+			"path": "../../packages/amagi-sync-client/tsconfig.json"
+		},
+		{
+			"path": "../../packages/amagi-browser-adapter-chromium/tsconfig.json"
+		}
+	]
 }

@@ -1,0 +1,17 @@
+[package]
+name = "amagi-bookmarks"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+amagi-db = { workspace = true }
+sea-orm = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+snafu = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+amagi-config = { workspace = true }
+amagi-test-utils = { workspace = true }
+tokio = { workspace = true }
